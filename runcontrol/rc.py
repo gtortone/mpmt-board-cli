@@ -93,8 +93,8 @@ class RunControlApp(cmd2.Cmd):
       if (self.checkRegBoundary(args.address)):
          value = self.regs[args.address*4:(args.address*4)+4]
          data_list: List[List[Any]] = list()
-         data_list.append([ format(value[0], '08b'), format(value[1], '08b'), format(value[2], '08b'), format(value[3], '08b') ])
-         data_list.append([ f'0x{value[0]:02x}', f'0x{value[1]:02x}', f'0x{value[2]:02x}', f'0x{value[3]:02x}', ])
+         data_list.append([ format(value[3], '08b'), format(value[2], '08b'), format(value[1], '08b'), format(value[0], '08b') ])
+         data_list.append([ f'0x{value[3]:02x}', f'0x{value[2]:02x}', f'0x{value[1]:02x}', f'0x{value[0]:02x}', ])
          table = self.bt.generate_table(data_list)
          self.poutput(table)
       else:

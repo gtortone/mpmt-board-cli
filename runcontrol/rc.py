@@ -60,7 +60,7 @@ class RunControlApp(cmd2.Cmd):
    def do_read(self, args: argparse.Namespace) -> None:
       """Read UIO register"""
       if (self.checkRegBoundary(args.address)):
-         value = int.from_bytes(self.regs[args.address*4:(args.address*4)+4], byteorder='big')
+         value = int.from_bytes(self.regs[args.address*4:(args.address*4)+4], byteorder='little')
          self.poutput(f'0x{value:08x} ({value})')
       else:
          self.perror(f'E: register address outside boundary - min:0 max:{self.maxRegisterAddress}')
@@ -76,7 +76,7 @@ class RunControlApp(cmd2.Cmd):
       """Write UIO register"""
       if (self.checkRegBoundary(args.address)):
          try:
-            self.regs[args.address*4:(args.address*4)+4] = int.to_bytes(args.value, 4, byteorder='big')
+            self.regs[args.address*4:(args.address*4)+4] = int.to_bytes(args.value, 4, byteorder='little')
          except:
             self.perror(f'E: write register error')
       else:

@@ -127,5 +127,17 @@ class HVModbus():
       fwlsb = (fwver & 0x00FF)
       pmsn = self.dev.read_string(0x0008, 6)
       hvsn = self.dev.read_string(0x000E, 6)
-      pcbsn = self.dev.read_string(0x0014, 6)
-      return (fwmsb, fwlsb, pmsn, hvsn, pcbsn)
+      ifsn = self.dev.read_string(0x0014, 6)
+      return (fwmsb, fwlsb, pmsn, hvsn, ifsn)
+
+   def setPMSerialNumber(self, sn):
+      self.dev.write_string(0x0008, sn, 6)
+
+   def setHVSerialNumber(self, sn):
+      self.dev.write_string(0x000E, sn, 6)
+
+   def setIFSerialNumber(self, sn):
+      self.dev.write_string(0x0014, sn, 6)
+
+   def setModbusAddress(self, addr):
+      self.dev.write_register(0x0000, addr)

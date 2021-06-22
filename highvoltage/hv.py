@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
-import functools
 import argparse
 import os
 import time
 import sys
 import cmd2
+import functools
+import getpass
 from hvmodbus import HVModbus
 from cmd2.table_creator import (
     Column,
@@ -16,6 +17,8 @@ from cmd2.table_creator import (
 from typing import (
     List,
 )
+
+HV_PASS = 'hv4all'
 
 class HighVoltageApp(cmd2.Cmd):
 
@@ -75,6 +78,21 @@ class HighVoltageApp(cmd2.Cmd):
          self.perror(f'HV module not connected - use select command') 
          return False
 
+   def select(self, address):
+      if(self.checkAddress(address)):
+         if (self.hv.open(self.port, address)):
+            self.poutput(f'HV module with address {address} selected')
+         else:
+            self.perror(f'HV module with address {address} not present')
+
+         if (self.hv.getAddress() is None):
+            self.prompt = cmd2.ansi.style('HV [] > ', fg='bright_black')
+         else:
+            self.prompt = cmd2.ansi.style(f'HV [{self.hv.getAddress()}] > ', fg='bright_green')
+      else:
+         self.perror(f'E: modbus address outside boundary - min:0 max:20')
+
+
    def checkVoltageSetRange(value):
       try:
          value = int(value)
@@ -108,8 +126,8 @@ class HighVoltageApp(cmd2.Cmd):
          msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
          raise argparse.ArgumentTypeError(msg)
 
-      if value < 1 or value > 10:
-         msg = cmd2.ansi.style(f'min:1 max:10 - got {value}', fg='bright_red')
+      if value < 1 or value > 20:
+         msg = cmd2.ansi.style(f'min:1 max:20 - got {value}', fg='bright_red')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -134,8 +152,8 @@ class HighVoltageApp(cmd2.Cmd):
          msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
          raise argparse.ArgumentTypeError(msg)
 
-      if value < 20 or value > 100:
-         msg = cmd2.ansi.style(f'min:20 max:100 - got {value}', fg='bright_red')
+      if value < 20 or value > 70:
+         msg = cmd2.ansi.style(f'min:20 max:70 - got {value}', fg='bright_red')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -161,7 +179,27 @@ class HighVoltageApp(cmd2.Cmd):
          raise argparse.ArgumentTypeError(msg)
 
       if value < 0 or value > 2500:
-         msg = cmd2.ansi.style(f'min:0 max:2500- got {value}', fg='bright_red')
+         msg = cmd2.ansi.style(f'min:0 max:2500 - got {value}', fg='bright_red')
+         raise argparse.ArgumentTypeError(msg)
+
+      return value
+
+   def checkSNLength(value):
+      if len(value) > 12:
+         msg = cmd2.ansi.style(f'max length 12 chars - got {len(value)} chars', fg='bright_red')
+         raise argparse.ArgumentTypeError(msg)
+
+      return value
+
+   def checkModbusAddress(value):
+      try:
+         value = int(value)
+      except ValueError as err:
+         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         raise argparse.ArgumentTypeError(msg)
+
+      if value < 1 or value > 20:
+         msg = cmd2.ansi.style(f'min:1 max:20 - got {value}', fg='bright_red')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -235,18 +273,7 @@ class HighVoltageApp(cmd2.Cmd):
    @cmd2.with_category("High Voltage commands")
    def do_select(self, args: argparse.Namespace) -> None:
       """Select modbus address"""
-      if(self.checkAddress(args.address)):
-         if (self.hv.open(self.port, args.address)):
-            self.poutput(f'HV module with address {args.address} selected')
-         else:
-            self.perror(f'HV module with address {args.address} not present')
-
-         if (self.hv.getAddress() is None):
-            self.prompt = cmd2.ansi.style('HV [] > ', fg='bright_black')
-         else:
-            self.prompt = cmd2.ansi.style(f'HV [{self.hv.getAddress()}] > ', fg='bright_green')
-      else:
-         self.perror(f'E: modbus address outside boundary - min:0 max:20')
+      self.select(args.address)
 
    #
    # rate rampup / rampdown
@@ -291,10 +318,10 @@ class HighVoltageApp(cmd2.Cmd):
    current_parser.add_argument('value', type=checkLimitCurrentRange, help='current threshold [uA] (min:1 max:10)')
 
    voltage_parser = limit_subparsers.add_parser('voltage', help='voltage margin +/-')
-   voltage_parser.add_argument('value', type=checkLimitVoltageRange, help='voltage margin +/- [V] (min:1 max:10)')
+   voltage_parser.add_argument('value', type=checkLimitVoltageRange, help='voltage margin +/- [V] (min:1 max:20)')
 
    temperature_parser = limit_subparsers.add_parser('temperature', help='temperature limit')
-   temperature_parser.add_argument('value',  type=checkLimitTemperatureRange, help='temperature threshold [°C] (min:20 max:100)')
+   temperature_parser.add_argument('value',  type=checkLimitTemperatureRange, help='temperature threshold [°C] (min:20 max:70)')
 
    triptime_parser = limit_subparsers.add_parser('triptime', help='trip time limit')
    triptime_parser.add_argument('value',  type=checkLimitTriptimeRange, help='trip time threshold [ms] (min:1 max:1000)')
@@ -388,11 +415,11 @@ class HighVoltageApp(cmd2.Cmd):
       if (self.checkConnection() is False):
          return
       info = self.hv.getInfo()
-      self.poutput(f'{"FW ver": <15}: {info[0]}.{info[1]}')
-      self.poutput(f'{"PM s/n": <15}: {info[2]}')
-      self.poutput(f'{"HVPCB s/n": <15}: {info[3]}')
-      self.poutput(f'{"IFPCB s/n": <15}: {info[4]}')
-      self.poutput(f'{"DAC threshold": <15}: {self.hv.getThreshold()} mV') 
+      self.poutput(f'{"FW ver": <20}: {info[0]}.{info[1]}')
+      self.poutput(f'{"PM s/n": <20}: {info[2]}')
+      self.poutput(f'{"HVPCB s/n": <20}: {info[3]}')
+      self.poutput(f'{"IFPCB s/n": <20}: {info[4]}')
+      self.poutput(f'{"Trigger threshold": <20}: {self.hv.getThreshold()} mV') 
 
    #
    # mon
@@ -439,6 +466,74 @@ class HighVoltageApp(cmd2.Cmd):
       if (self.checkConnection() is False):
          return
       self.hv.setThreshold(args.value)
+
+   #
+   # serial
+   #
+   serial_parser = argparse.ArgumentParser()
+   serial_subparsers = serial_parser.add_subparsers(title='subcommands', help='subcommand help')
+
+   pm_parser = serial_subparsers.add_parser('pm', help='PM')
+   pm_parser.add_argument('sn', type=checkSNLength, help='serial number (max 12 char)')
+
+   hv_parser = serial_subparsers.add_parser('hv', help='HV')
+   hv_parser.add_argument('sn', type=checkSNLength, help='serial number (max 12 char)')
+
+   if_parser = serial_subparsers.add_parser('if', help='IF')
+   if_parser.add_argument('sn', type=checkSNLength, help='serial number (max 12 char)')
+
+   def serial_pm(self, args):
+      if (self.checkConnection() is False):
+         return
+      self.hv.setPMSerialNumber(args.sn)
+
+   def serial_hv(self, args):
+      if (self.checkConnection() is False):
+         return
+      self.hv.setHVSerialNumber(args.sn)
+
+   def serial_if(self, args):
+      if (self.checkConnection() is False):
+         return
+      self.hv.setIFSerialNumber(args.sn)
+
+   pm_parser.set_defaults(func=serial_pm)
+   hv_parser.set_defaults(func=serial_hv)
+   if_parser.set_defaults(func=serial_if)
+
+   @cmd2.with_argparser(serial_parser)
+   @cmd2.with_category("High Voltage commands")
+   def do_serial(self, args):
+      """Serial command help"""
+      if (self.checkConnection() is False):
+         return
+      func = getattr(args, 'func', None)
+      if func is not None:
+         password = getpass.getpass()
+         if (password == HV_PASS):
+            func(self, args)
+         else:
+            self.poutput(cmd2.ansi.style(f'password not correct', fg='bright_red'))
+      else:
+         self.do_help('serial')
+
+   #
+   # address
+   #
+   address_parser = argparse.ArgumentParser()
+   address_parser.add_argument('value', type=checkModbusAddress, help='modbus address (min:1 max:20)')
+
+   @cmd2.with_argparser(address_parser)
+   @cmd2.with_category("High Voltage commands")
+   def do_address(self, args: argparse.Namespace) -> None:
+      if (self.checkConnection() is False):
+         return
+      password = getpass.getpass()
+      if (password == HV_PASS):
+         self.hv.setModbusAddress(args.value)
+         self.select(args.value)
+      else:
+         self.poutput(cmd2.ansi.style(f'password not correct', fg='bright_red'))
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()

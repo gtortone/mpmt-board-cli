@@ -29,7 +29,7 @@ class HighVoltageApp(cmd2.Cmd):
 
       self.port = port
       self.allow_style = cmd2.ansi.STYLE_TERMINAL
-      self.prompt = cmd2.ansi.style('HV [] >', fg='bright_black')
+      self.prompt = cmd2.ansi.style('HV [] > ', fg='bright_black')
 
       cmd2.categorize(
          (cmd2.Cmd.do_alias, cmd2.Cmd.do_help, cmd2.Cmd.do_history, cmd2.Cmd.do_quit, cmd2.Cmd.do_set, cmd2.Cmd.do_run_script),
@@ -153,6 +153,19 @@ class HighVoltageApp(cmd2.Cmd):
 
       return value
 
+   def checkThresholdRange(value):
+      try:
+         value = int(value)
+      except ValueError as err:
+         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         raise argparse.ArgumentTypeError(msg)
+
+      if value < 0 or value > 2500:
+         msg = cmd2.ansi.style(f'min:0 max:2500- got {value}', fg='bright_red')
+         raise argparse.ArgumentTypeError(msg)
+
+      return value
+
    def statusString(self, statusCode):
       if (statusCode == 0):
          return 'UP'
@@ -229,9 +242,9 @@ class HighVoltageApp(cmd2.Cmd):
             self.perror(f'HV module with address {args.address} not present')
 
          if (self.hv.getAddress() is None):
-            self.prompt = cmd2.ansi.style('HV [] >', fg='bright_black')
+            self.prompt = cmd2.ansi.style('HV [] > ', fg='bright_black')
          else:
-            self.prompt = cmd2.ansi.style(f'HV [{self.hv.getAddress()}] >', fg='bright_green')
+            self.prompt = cmd2.ansi.style(f'HV [{self.hv.getAddress()}] > ', fg='bright_green')
       else:
          self.perror(f'E: modbus address outside boundary - min:0 max:20')
 
@@ -375,10 +388,11 @@ class HighVoltageApp(cmd2.Cmd):
       if (self.checkConnection() is False):
          return
       info = self.hv.getInfo()
-      self.poutput(f'{"FW ver": <10}: {info[0]}.{info[1]}')
-      self.poutput(f'{"PM s/n": <10}: {info[2]}')
-      self.poutput(f'{"HVPCB s/n": <10}: {info[3]}')
-      self.poutput(f'{"IFPCB s/n": <10}: {info[4]}')
+      self.poutput(f'{"FW ver": <15}: {info[0]}.{info[1]}')
+      self.poutput(f'{"PM s/n": <15}: {info[2]}')
+      self.poutput(f'{"HVPCB s/n": <15}: {info[3]}')
+      self.poutput(f'{"IFPCB s/n": <15}: {info[4]}')
+      self.poutput(f'{"DAC threshold": <15}: {self.hv.getThreshold()} mV') 
 
    #
    # mon
@@ -412,6 +426,19 @@ class HighVoltageApp(cmd2.Cmd):
             self.poutput(cmd2.ansi.style(f'{addr}', fg='bright_green'))
          else:
             self.poutput(cmd2.ansi.style(f'{addr}', fg='bright_red'))
+
+   #
+   # threshold
+   #
+   threshold_parser = argparse.ArgumentParser()
+   threshold_parser.add_argument('value', type=checkThresholdRange, help='value in mV (min:0 max:2500)')
+
+   @cmd2.with_argparser(threshold_parser)
+   @cmd2.with_category("High Voltage commands")
+   def do_threshold(self, args: argparse.Namespace) -> None:
+      if (self.checkConnection() is False):
+         return
+      self.hv.setThreshold(args.value)
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()

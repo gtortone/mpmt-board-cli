@@ -100,6 +100,12 @@ class HVModbus():
    def setLimitTriptime(self, value):
       self.dev.write_register(0x0022, value)
 
+   def setThreshold(self, value):
+      self.dev.write_register(0x002D, value)
+
+   def getThreshold(self):
+      return self.dev.read_register(0x002D)
+
    def getAlarm(self):
       return self.dev.read_register(0x002E)
 

@@ -69,6 +69,19 @@ class HighVoltageApp(cmd2.Cmd):
 
    st = SimpleTable(columns, divider_char=None)
 
+   def checkRange(value, minVal, maxVal):
+      try:
+         value = int(value)
+      except ValueError as err:
+         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         raise argparse.ArgumentTypeError(msg)
+
+      if value < minVal or value > maxVal:
+         msg = cmd2.ansi.style(f'value min:{minVal} max:{maxVal} - got {value}', fg='bright_red')
+         raise argparse.ArgumentTypeError(msg)
+
+      return value
+
    def checkAddress(self, addr):
       return (addr >= 0 and addr <= 20)
 
@@ -93,114 +106,9 @@ class HighVoltageApp(cmd2.Cmd):
       else:
          self.ansi_print(self.bright_red(f'E: modbus address outside boundary - min:0 max:20'))
 
-
-   def checkVoltageSetRange(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 0 or value > 1500:
-         msg = self.bright_red(f'min:0 max:1500 - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value 
-
-   def checkRateRange(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 1 or value > 25:
-         msg = self.bright_red(f'min:1 max:25 - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value
-
-   def checkLimitVoltageRange(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 1 or value > 20:
-         msg = self.bright_red(f'min:1 max:20 - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value
-
-   def checkLimitCurrentRange(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 1 or value > 10:
-         msg = self.bright_red(f'min:1 max:10 - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value
-
-   def checkLimitTemperatureRange(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 20 or value > 70:
-         msg = self.bright_red(f'min:20 max:70 - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value
-
-   def checkLimitTriptimeRange(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 1 or value > 1000:
-         msg = self.bright_red(f'min:1 max:1000 - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value
-
-   def checkThresholdRange(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 0 or value > 2500:
-         msg = self.bright_red(f'min:0 max:2500 - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value
-
-   def checkSNLength(value):
-      if len(value) > 12:
-         msg = self.bright_red(f'max length 12 chars - got {len(value)} chars')
-         raise argparse.ArgumentTypeError(msg)
-
-      return value
-
-   def checkModbusAddress(value):
-      try:
-         value = int(value)
-      except ValueError as err:
-         msg = self.bright_red(f'invalid value type - got {value}')
-         raise argparse.ArgumentTypeError(msg)
-
-      if value < 1 or value > 20:
-         msg = self.bright_red(f'min:1 max:20 - got {value}')
+   def checkLength(value, minVal, maxVal):
+      if len(value) < minVal or len(value) > maxVal:
+         msg = cmd2.ansi.style(f'length min:{minVal} max:{maxVal} - got {len(value)} chars', fg='bright_red')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -283,10 +191,10 @@ class HighVoltageApp(cmd2.Cmd):
    rate_subparsers = rate_parser.add_subparsers(title='subcommands', help='subcommand help')
 
    rampup_parser = rate_subparsers.add_parser('rampup', help='rampup rate')
-   rampup_parser.add_argument('value', type=checkRateRange, help='ramp up voltage rate [V/s] (min:0 max:25)')
+   rampup_parser.add_argument('value', type=functools.partial(checkRange, minVal=1, maxVal=25), help='ramp up voltage rate [V/s] (min:0 max:25)')
 
    rampdown_parser = rate_subparsers.add_parser('rampdown', help='rampdown rate')
-   rampdown_parser.add_argument('value', type=checkRateRange, help='ramp down voltage rate [V/s] (min:0 max:25)')
+   rampdown_parser.add_argument('value', type=functools.partial(checkRange, minVal=1, maxVal=25), help='ramp down voltage rate [V/s] (min:0 max:25)')
    
    def rate_rampup(self, args):
       self.hv.setRateRampup(args.value)
@@ -316,16 +224,16 @@ class HighVoltageApp(cmd2.Cmd):
    limit_subparsers = limit_parser.add_subparsers(title='subcommands', help='subcommand help')
 
    current_parser = limit_subparsers.add_parser('current', help='current limit')
-   current_parser.add_argument('value', type=checkLimitCurrentRange, help='current threshold [uA] (min:1 max:10)')
+   current_parser.add_argument('value', type=functools.partial(checkRange, minVal=1, maxVal=10), help='current threshold [uA] (min:1 max:10)')
 
    voltage_parser = limit_subparsers.add_parser('voltage', help='voltage margin +/-')
-   voltage_parser.add_argument('value', type=checkLimitVoltageRange, help='voltage margin +/- [V] (min:1 max:20)')
+   voltage_parser.add_argument('value', type=functools.partial(checkRange, minVal=1, maxVal=20), help='voltage margin +/- [V] (min:1 max:20)')
 
    temperature_parser = limit_subparsers.add_parser('temperature', help='temperature limit')
-   temperature_parser.add_argument('value',  type=checkLimitTemperatureRange, help='temperature threshold [°C] (min:20 max:70)')
+   temperature_parser.add_argument('value',  type=functools.partial(checkRange, minVal=20, maxVal=70), help='temperature threshold [°C] (min:20 max:70)')
 
    triptime_parser = limit_subparsers.add_parser('triptime', help='trip time limit')
-   triptime_parser.add_argument('value',  type=checkLimitTriptimeRange, help='trip time threshold [ms] (min:1 max:1000)')
+   triptime_parser.add_argument('value',  type=functools.partial(checkRange, minVal=1, maxVal=1000), help='trip time threshold [ms] (min:1 max:1000)')
 
    def limit_current(self, args):
       self.hv.setLimitCurrent(args.value)
@@ -360,7 +268,7 @@ class HighVoltageApp(cmd2.Cmd):
    # voltage
    #
    voltage_parser = argparse.ArgumentParser()
-   voltage_parser.add_argument('value', type=checkVoltageSetRange, help='voltage level [V] (min:0 max:1500)')
+   voltage_parser.add_argument('value', type=functools.partial(checkRange, minVal=0, maxVal=1500), help='voltage level [V] (min:0 max:1500)')
    
    @cmd2.with_argparser(voltage_parser)
    @cmd2.with_category("High Voltage commands")
@@ -459,7 +367,7 @@ class HighVoltageApp(cmd2.Cmd):
    # threshold
    #
    threshold_parser = argparse.ArgumentParser()
-   threshold_parser.add_argument('value', type=checkThresholdRange, help='value in mV (min:0 max:2500)')
+   threshold_parser.add_argument('value', type=functools.partial(checkRange, minVal=0, maxVal=2500), help='value in mV (min:0 max:2500)')
 
    @cmd2.with_argparser(threshold_parser)
    @cmd2.with_category("High Voltage commands")
@@ -475,13 +383,13 @@ class HighVoltageApp(cmd2.Cmd):
    serial_subparsers = serial_parser.add_subparsers(title='subcommands', help='subcommand help')
 
    pm_parser = serial_subparsers.add_parser('pm', help='PM')
-   pm_parser.add_argument('sn', type=checkSNLength, help='serial number (max 12 char)')
+   pm_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
 
    hv_parser = serial_subparsers.add_parser('hv', help='HV')
-   hv_parser.add_argument('sn', type=checkSNLength, help='serial number (max 12 char)')
+   hv_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
 
    if_parser = serial_subparsers.add_parser('if', help='IF')
-   if_parser.add_argument('sn', type=checkSNLength, help='serial number (max 12 char)')
+   if_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
 
    def serial_pm(self, args):
       if (self.checkConnection() is False):
@@ -522,7 +430,7 @@ class HighVoltageApp(cmd2.Cmd):
    # address
    #
    address_parser = argparse.ArgumentParser()
-   address_parser.add_argument('value', type=checkModbusAddress, help='modbus address (min:1 max:20)')
+   address_parser.add_argument('value', type=functools.partial(checkRange, minVal=1, maxVal=20), help='modbus address (min:1 max:20)')
 
    @cmd2.with_argparser(address_parser)
    @cmd2.with_category("High Voltage commands")

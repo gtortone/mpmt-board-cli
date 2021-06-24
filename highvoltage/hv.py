@@ -32,7 +32,7 @@ class HighVoltageApp(cmd2.Cmd):
 
       self.port = port
       self.allow_style = cmd2.ansi.STYLE_TERMINAL
-      self.prompt = cmd2.ansi.style('HV [] > ', fg='bright_black')
+      self.prompt = self.bright_black('HV [] > ')
 
       cmd2.categorize(
          (cmd2.Cmd.do_alias, cmd2.Cmd.do_help, cmd2.Cmd.do_history, cmd2.Cmd.do_quit, cmd2.Cmd.do_set, cmd2.Cmd.do_run_script),
@@ -45,6 +45,7 @@ class HighVoltageApp(cmd2.Cmd):
       cmd2.ansi.style_aware_write(sys.stdout, text + '\n')
 
    # Text styles used in the data
+   bright_black = functools.partial(cmd2.ansi.style, fg=cmd2.ansi.fg.bright_black)
    bright_yellow = functools.partial(cmd2.ansi.style, fg=cmd2.ansi.fg.bright_yellow)
    bright_green = functools.partial(cmd2.ansi.style, fg=cmd2.ansi.fg.bright_green)
    bright_red = functools.partial(cmd2.ansi.style, fg=cmd2.ansi.fg.bright_red)
@@ -75,7 +76,7 @@ class HighVoltageApp(cmd2.Cmd):
       if(self.hv.isConnected()):
          return True
       else:
-         self.perror(f'HV module not connected - use select command') 
+         self.ansi_print(self.bright_red(f'HV module not connected - use select command'))
          return False
 
    def select(self, address):
@@ -83,25 +84,25 @@ class HighVoltageApp(cmd2.Cmd):
          if (self.hv.open(self.port, address)):
             self.poutput(f'HV module with address {address} selected')
          else:
-            self.perror(f'HV module with address {address} not present')
+            self.ansi_print(self.bright_red(f'HV module with address {address} not present'))
 
          if (self.hv.getAddress() is None):
-            self.prompt = cmd2.ansi.style('HV [] > ', fg='bright_black')
+            self.prompt = self.bright_black('HV [] > ')
          else:
-            self.prompt = cmd2.ansi.style(f'HV [{self.hv.getAddress()}] > ', fg='bright_green')
+            self.prompt = self.bright_green(f'HV [{self.hv.getAddress()}] > ')
       else:
-         self.perror(f'E: modbus address outside boundary - min:0 max:20')
+         self.ansi_print(self.bright_red(f'E: modbus address outside boundary - min:0 max:20'))
 
 
    def checkVoltageSetRange(value):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 0 or value > 1500:
-         msg = cmd2.ansi.style(f'min:0 max:1500 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:0 max:1500 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value 
@@ -110,11 +111,11 @@ class HighVoltageApp(cmd2.Cmd):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 1 or value > 25:
-         msg = cmd2.ansi.style(f'min:1 max:25 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:1 max:25 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -123,11 +124,11 @@ class HighVoltageApp(cmd2.Cmd):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 1 or value > 20:
-         msg = cmd2.ansi.style(f'min:1 max:20 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:1 max:20 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -136,11 +137,11 @@ class HighVoltageApp(cmd2.Cmd):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 1 or value > 10:
-         msg = cmd2.ansi.style(f'min:1 max:10 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:1 max:10 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -149,11 +150,11 @@ class HighVoltageApp(cmd2.Cmd):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 20 or value > 70:
-         msg = cmd2.ansi.style(f'min:20 max:70 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:20 max:70 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -162,11 +163,11 @@ class HighVoltageApp(cmd2.Cmd):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 1 or value > 1000:
-         msg = cmd2.ansi.style(f'min:1 max:1000 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:1 max:1000 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -175,18 +176,18 @@ class HighVoltageApp(cmd2.Cmd):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 0 or value > 2500:
-         msg = cmd2.ansi.style(f'min:0 max:2500 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:0 max:2500 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value
 
    def checkSNLength(value):
       if len(value) > 12:
-         msg = cmd2.ansi.style(f'max length 12 chars - got {len(value)} chars', fg='bright_red')
+         msg = self.bright_red(f'max length 12 chars - got {len(value)} chars')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -195,11 +196,11 @@ class HighVoltageApp(cmd2.Cmd):
       try:
          value = int(value)
       except ValueError as err:
-         msg = cmd2.ansi.style(f'invalid value type - got {value}', fg='bright_red')
+         msg = self.bright_red(f'invalid value type - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       if value < 1 or value > 20:
-         msg = cmd2.ansi.style(f'min:1 max:20 - got {value}', fg='bright_red')
+         msg = self.bright_red(f'min:1 max:20 - got {value}')
          raise argparse.ArgumentTypeError(msg)
 
       return value
@@ -224,19 +225,19 @@ class HighVoltageApp(cmd2.Cmd):
 
    def statusIcon(self, statusCode):
       if (statusCode == 0):
-         return cmd2.ansi.style(u'\u25C9', fg='bright_green')
+         return self.bright_green(u'\u25C9')
       elif (statusCode == 1):
          return u'\u25C9'
       elif (statusCode == 2):
-         return cmd2.ansi.style(u'\u22C0', fg='bright_yellow')
+         return self.bright_yellow(u'\u22C0')
       elif (statusCode == 3):
-         return cmd2.ansi.style(u'\u22C1', fg='yellow')
+         return self.yellow(u'\u22C1')
       elif (statusCode == 4):
-         return cmd2.ansi.style(u'\u22C0', fg='bright_yellow')
+         return self.bright_yellow(u'\u22C0')
       elif (statusCode == 5):
-         return cmd2.ansi.style(u'\u22C1', fg='yellow')
+         return self.yellow(u'\u22C1')
       elif (statusCode == 6):
-         return cmd2.ansi.style(u'\u25C9', fg='bright_red')
+         return self.bright_red(u'\u25C9')
       else:
          return "undef"
 
@@ -450,9 +451,9 @@ class HighVoltageApp(cmd2.Cmd):
       for addr in range(0,21):
          found = self.hv.probe(self.port, addr)
          if(found):
-            self.poutput(cmd2.ansi.style(f'{addr}', fg='bright_green'))
+            self.ansi_print(self.bright_green(f'{addr}'))
          else:
-            self.poutput(cmd2.ansi.style(f'{addr}', fg='bright_red'))
+            self.ansi_print(self.bright_red(f'{addr}'))
 
    #
    # threshold
@@ -513,7 +514,7 @@ class HighVoltageApp(cmd2.Cmd):
          if (password == HV_PASS):
             func(self, args)
          else:
-            self.poutput(cmd2.ansi.style(f'password not correct', fg='bright_red'))
+            self.ansi_print(self.bright_red(f'password not correct'))
       else:
          self.do_help('serial')
 
@@ -533,7 +534,7 @@ class HighVoltageApp(cmd2.Cmd):
          self.hv.setModbusAddress(args.value)
          self.select(args.value)
       else:
-         self.poutput(cmd2.ansi.style(f'password not correct', fg='bright_red'))
+         self.ansi_print(self.bright_red(f'password not correct'))
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()

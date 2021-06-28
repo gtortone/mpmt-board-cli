@@ -81,7 +81,7 @@ class HVModbus():
    def getLimit(self, fmt=str):
       lv = self.dev.read_register(0x0027)
       li = self.dev.read_register(0x0025)
-      lt = 0 # self.dev.read_register(0x002F)
+      lt = '?' #self.dev.read_register(0x002F)
       ltt = self.dev.read_register(0x0022)
       if (fmt == str):
          return f'{lv}/{li}/{lt}/{ltt}'
@@ -141,3 +141,23 @@ class HVModbus():
 
    def setModbusAddress(self, addr):
       self.dev.write_register(0x0000, addr)
+
+   def readMonRegisters(self):
+      monData = {}
+      baseAddress = 0x0000
+      regs = self.dev.read_registers(baseAddress, 47)
+      monData['status'] = regs[0x0006]
+      monData['Vset'] = regs[0x0026]
+      monData['V'] = ((regs[0x002B] << 16) + regs[0x002A]) / 1000
+      monData['I'] = ((regs[0x0029] << 16) + regs[0x0028]) / 1000
+      monData['T'] = regs[0x0007]
+      monData['rateUP'] = regs[0x0023]
+      monData['rateDN'] = regs[0x0024]
+      monData['limitV'] = regs[0x0027]
+      monData['limitI'] = regs[0x0025]
+      #monData['limitT'] = regs[0x002F]
+      monData['limitT'] = '?'
+      monData['limitTRIP'] = regs[0x0022]
+      monData['Vref'] = regs[0x002C]
+      monData['alarm'] = regs[0x002E]
+      return monData

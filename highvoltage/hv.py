@@ -168,9 +168,8 @@ class HighVoltageApp(cmd2.Cmd):
       self.ansi_print(self.bright_blue(self.st.generate_data_row(['','','[V]','[V]','[uA]','[°C]','[V/s]/[V/s]','[V]/[uA]/[°C]/[ms]','[mV]',''])))
       
    def printMonitorRow(self):
-      status = self.hv.getStatus()
-      alarm = self.hv.getAlarm()
-      self.ansi_print(self.st.generate_data_row([self.statusIcon(status), self.statusString(status), self.hv.getVoltageSet(), f'{self.hv.getVoltage():.3f}', f'{self.hv.getCurrent():.3f}', self.hv.getTemperature(), self.hv.getRate(), self.hv.getLimit(), self.hv.getVref(), self.alarmString(alarm)]))
+      monData = self.hv.readMonRegisters()
+      self.ansi_print(self.st.generate_data_row([self.statusIcon(monData['status']), self.statusString(monData['status']), monData['Vset'], f'{monData["V"]:.3f}', f'{monData["I"]:.3f}', monData['T'], f'{monData["rateUP"]}/{monData["rateDN"]}', f'{monData["limitV"]}/{monData["limitI"]}/{monData["limitT"]}/{monData["limitTRIP"]}', monData['Vref'], self.alarmString(monData['alarm'])]))
 
    #
    # select

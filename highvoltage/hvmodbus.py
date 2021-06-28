@@ -158,6 +158,6 @@ class HVModbus():
       #monData['limitT'] = regs[0x002F]
       monData['limitT'] = '?'
       monData['limitTRIP'] = regs[0x0022]
-      monData['Vref'] = regs[0x002C]
+      monData['threshold'] = regs[0x002D]
       monData['alarm'] = regs[0x002E]
       return monData

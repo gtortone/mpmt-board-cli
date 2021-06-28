@@ -64,7 +64,7 @@ class HighVoltageApp(cmd2.Cmd):
    columns.append(Column("", width=7, data_horiz_align=HorizontalAlignment.RIGHT))
    columns.append(Column("", width=12, data_horiz_align=HorizontalAlignment.RIGHT))
    columns.append(Column("", width=20, data_horiz_align=HorizontalAlignment.RIGHT))
-   columns.append(Column("", width=5, data_horiz_align=HorizontalAlignment.RIGHT))
+   columns.append(Column("", width=13, data_horiz_align=HorizontalAlignment.RIGHT))
    columns.append(Column("", width=14, data_horiz_align=HorizontalAlignment.CENTER))
 
    st = SimpleTable(columns, divider_char=None)
@@ -164,12 +164,12 @@ class HighVoltageApp(cmd2.Cmd):
       return self.alarm_red(msg)
 
    def printMonitorHeader(self):
-      self.ansi_print(self.bright_cyan(self.st.generate_data_row(['','status','Vset','V','I','T','rate UP/DN','limit V/I/T/TRIP','Vref','alarm'])))
+      self.ansi_print(self.bright_cyan(self.st.generate_data_row(['','status','Vset','V','I','T','rate UP/DN','limit V/I/T/TRIP','trigger thr','alarm'])))
       self.ansi_print(self.bright_blue(self.st.generate_data_row(['','','[V]','[V]','[uA]','[°C]','[V/s]/[V/s]','[V]/[uA]/[°C]/[ms]','[mV]',''])))
       
    def printMonitorRow(self):
       monData = self.hv.readMonRegisters()
-      self.ansi_print(self.st.generate_data_row([self.statusIcon(monData['status']), self.statusString(monData['status']), monData['Vset'], f'{monData["V"]:.3f}', f'{monData["I"]:.3f}', monData['T'], f'{monData["rateUP"]}/{monData["rateDN"]}', f'{monData["limitV"]}/{monData["limitI"]}/{monData["limitT"]}/{monData["limitTRIP"]}', monData['Vref'], self.alarmString(monData['alarm'])]))
+      self.ansi_print(self.st.generate_data_row([self.statusIcon(monData['status']), self.statusString(monData['status']), monData['Vset'], f'{monData["V"]:.3f}', f'{monData["I"]:.3f}', monData['T'], f'{monData["rateUP"]}/{monData["rateDN"]}', f'{monData["limitV"]}/{monData["limitI"]}/{monData["limitT"]}/{monData["limitTRIP"]}', monData['threshold'], self.alarmString(monData['alarm'])]))
 
    #
    # select
@@ -327,7 +327,7 @@ class HighVoltageApp(cmd2.Cmd):
       self.poutput(f'{"PM s/n": <20}: {info[2]}')
       self.poutput(f'{"HVPCB s/n": <20}: {info[3]}')
       self.poutput(f'{"IFPCB s/n": <20}: {info[4]}')
-      self.poutput(f'{"Trigger threshold": <20}: {self.hv.getThreshold()} mV') 
+      self.poutput(f'{"Vref": <20}: {self.hv.getVref()} mV') 
 
    #
    # mon

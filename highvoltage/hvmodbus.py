@@ -81,7 +81,7 @@ class HVModbus():
    def getLimit(self, fmt=str):
       lv = self.dev.read_register(0x0027)
       li = self.dev.read_register(0x0025)
-      lt = '?' #self.dev.read_register(0x002F)
+      lt = self.dev.read_register(0x002F)
       ltt = self.dev.read_register(0x0022)
       if (fmt == str):
          return f'{lv}/{li}/{lt}/{ltt}'
@@ -145,7 +145,7 @@ class HVModbus():
    def readMonRegisters(self):
       monData = {}
       baseAddress = 0x0000
-      regs = self.dev.read_registers(baseAddress, 47)
+      regs = self.dev.read_registers(baseAddress, 48)
       monData['status'] = regs[0x0006]
       monData['Vset'] = regs[0x0026]
       monData['V'] = ((regs[0x002B] << 16) + regs[0x002A]) / 1000
@@ -155,9 +155,45 @@ class HVModbus():
       monData['rateDN'] = regs[0x0024]
       monData['limitV'] = regs[0x0027]
       monData['limitI'] = regs[0x0025]
-      #monData['limitT'] = regs[0x002F]
-      monData['limitT'] = '?'
+      monData['limitT'] = regs[0x002F]
       monData['limitTRIP'] = regs[0x0022]
       monData['threshold'] = regs[0x002D]
       monData['alarm'] = regs[0x002E]
       return monData
+
+   def readCalibRegisters(self):
+      mlsb = self.dev.read_register(0x0030)
+      mmsb = self.dev.read_register(0x0031)
+      calibm = ((mmsb << 16) + mlsb)
+      if(calibm > 65535):
+         calibm = calibm - 131072
+      calibm = calibm / 1000
+
+      qlsb = self.dev.read_register(0x0032)
+      qmsb = self.dev.read_register(0x0033)
+      calibq = ((qmsb << 16) + qlsb)
+      if(calibq > 65535):
+         calibq = calibq - 131072
+      calibq = calibq / 1000
+
+      return (calibm, calibq)
+
+   def writeCalibSlope(self, slope):
+      slope = int(slope * 1000)
+      if(slope < 0):
+         slope = 131072 + slope
+      lsb = (slope & 0xFFFF)
+      msb = slope >> 16
+
+      self.dev.write_register(0x0030, lsb)
+      self.dev.write_register(0x0031, msb)
+
+   def writeCalibOffset(self, offset):
+      offset = int(offset * 1000)
+      if(offset < 0):
+         offset = 131072 + offset 
+      lsb = (offset & 0xFFFF)
+      msb = offset >> 16
+
+      self.dev.write_register(0x0032, lsb)
+      self.dev.write_register(0x0033, msb)

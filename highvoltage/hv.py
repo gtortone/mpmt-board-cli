@@ -8,6 +8,7 @@ import sys
 import cmd2
 import functools
 import getpass
+import numpy as np
 from hvmodbus import HVModbus
 from cmd2.table_creator import (
     Column,
@@ -17,6 +18,7 @@ from cmd2.table_creator import (
 from typing import (
     List,
 )
+
 
 HV_PASS = 'hv4all'
 
@@ -323,11 +325,14 @@ class HighVoltageApp(cmd2.Cmd):
       if (self.checkConnection() is False):
          return
       info = self.hv.getInfo()
+      (m,q) = self.hv.readCalibRegisters()
       self.poutput(f'{"FW ver": <20}: {info[0]}.{info[1]}')
       self.poutput(f'{"PM s/n": <20}: {info[2]}')
       self.poutput(f'{"HVPCB s/n": <20}: {info[3]}')
       self.poutput(f'{"IFPCB s/n": <20}: {info[4]}')
       self.poutput(f'{"Vref": <20}: {self.hv.getVref()} mV') 
+      self.poutput(f'{"Calibration slope": <20}: {m}')
+      self.poutput(f'{"Calibration offset": <20}: {q}')
 
    #
    # mon
@@ -442,6 +447,124 @@ class HighVoltageApp(cmd2.Cmd):
          self.select(args.value)
       else:
          self.ansi_print(self.bright_red(f'password not correct'))
+
+   #
+   # slope
+   #
+   slope_parser = argparse.ArgumentParser()
+   slope_parser.add_argument('value', type=float, help='calibration slope value (m)')
+   @cmd2.with_argparser(slope_parser)
+   @cmd2.with_category("High Voltage commands")
+   def do_slope(self, args: argparse.Namespace) -> None:
+      if (self.checkConnection() is False):
+         return
+      self.hv.writeCalibSlope(args.value)
+
+   #
+   # offset
+   #
+   offset_parser = argparse.ArgumentParser()
+   offset_parser.add_argument('value', type=float, help='calibration offset value (q)')
+   @cmd2.with_argparser(offset_parser)
+   @cmd2.with_category("High Voltage commands")
+   def do_offset(self, args: argparse.Namespace) -> None:
+      if (self.checkConnection() is False):
+         return
+      self.hv.writeCalibOffset(args.value)
+
+   #
+   # calibration
+   #
+   calibration_parser = argparse.ArgumentParser()
+
+   @cmd2.with_argparser(calibration_parser)
+   @cmd2.with_category("High Voltage commands")
+   def do_calibration(self, args: argparse.Namespace) -> None:
+      if (self.checkConnection() is False):
+         return
+
+      ans = input(self.bright_yellow('WARNING: calibration is a time consuming task - confirm (Y/N) '))
+      if (str(ans).upper() != 'Y'):
+         return
+
+      ans = input(self.bright_yellow('WARNING: do you agree to erase current calibration values ? (Y/N) '))
+      if (str(ans).upper() != 'Y'):
+         return
+
+      self.hv.writeCalibSlope(1)
+      self.hv.writeCalibOffset(0)
+
+      Vexpect = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500]
+      Vread = []
+      
+      self.poutput('set fast rampup/rampdown rate (25 V/s)')
+      self.hv.setRateRampup(25)
+      self.hv.setRateRampdown(25)
+      
+      self.poutput('start calibration with status=DOWN Vset=10V')
+      self.hv.setVoltageSet(10)
+      self.hv.powerOff()
+      print(f'waiting for voltage < {Vexpect[0]}', end='', flush=True)
+      while(self.hv.getVoltage() > Vexpect[0]):
+         print('.', end='', flush=True)
+         time.sleep(1)
+      
+      self.ansi_print(self.bright_green('\nturn on high voltage'))
+      self.hv.powerOn()
+      for v in Vexpect:
+         self.ansi_print(self.bright_green(f"Vset = {v}V"))
+         self.hv.setVoltageSet(v)
+         time.sleep(1)
+         print('waiting for voltage level', end='', flush=True)
+         while (True):
+            if (self.statusString(self.hv.getStatus()) != 'UP'):
+               time.sleep(1)
+               print('.', end='', flush=True)
+               continue
+            else:
+               print(f'\nVset = {v}V reached - collecting samples', end='', flush=True)
+               # wait for voltage leveling
+               time.sleep(2)
+               Vtemp = []
+               for _ in range(0,10):
+                  print('.', end='', flush=True)
+                  Vtemp.append(self.hv.getVoltage())
+                  time.sleep(0.5)
+               Vmeas = np.array(Vtemp)
+               # delete min/max elements
+               Vmeas.sort()
+               Vmeas = np.delete(Vmeas, 0)
+               Vmeas = np.delete(Vmeas, len(Vmeas)-1)
+               Vread.append(Vmeas.mean())
+               self.poutput(f'\n{Vmeas}')
+               self.poutput(f'mean = {Vmeas.mean()}')
+               break
+
+      self.poutput(f'Vexpect => {Vexpect}')
+      self.poutput(f'Vread => {Vread}')
+
+      x = np.array(Vread)
+      y = np.array(Vexpect)
+      # assemble matrix A
+      A = np.vstack([x, np.ones(len(x))]).T
+      # turn y into a column vector
+      y = y[:, np.newaxis]
+      # direct least square regression
+      alpha = np.dot((np.dot(np.linalg.inv(np.dot(A.T,A)),A.T)),y)
+      self.ansi_print(self.bright_cyan(f'slope = {alpha[0][0]} , offset = {alpha[1][0]}'))
+
+      # write calibration registers
+      ans = input(self.bright_yellow('WARNING: do you want to write new calibration values ? (Y/N) '))
+      if (str(ans).upper() == 'Y'):
+         self.hv.writeCalibSlope(float(alpha[0][0]))
+         self.hv.writeCalibOffset(float(alpha[1][0]))
+         print('OK')
+         
+      self.poutput('stop calibration with status=DOWN Vset=10V')
+      self.hv.setVoltageSet(10)
+      self.hv.powerOff()
+
+      self.ansi_print(self.bright_green('calibration DONE!'))
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()

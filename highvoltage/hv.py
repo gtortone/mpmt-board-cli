@@ -504,30 +504,36 @@ class HighVoltageApp(cmd2.Cmd):
       self.poutput('start calibration with status=DOWN Vset=10V')
       self.hv.setVoltageSet(10)
       self.hv.powerOff()
-      print(f'waiting for voltage < {Vexpect[0]}', end='', flush=True)
+      self.poutput(f'waiting for voltage < {Vexpect[0]}')
+      self.printMonitorHeader()
+      self.printMonitorRow()
       while(self.hv.getVoltage() > Vexpect[0]):
-         print('.', end='', flush=True)
+         self.printMonitorRow()
          time.sleep(1)
       
-      self.ansi_print(self.bright_green('\nturn on high voltage'))
+      self.ansi_print(self.bright_green('turn on high voltage'))
       self.hv.powerOn()
       for v in Vexpect:
          self.ansi_print(self.bright_green(f"Vset = {v}V"))
          self.hv.setVoltageSet(v)
          time.sleep(1)
-         print('waiting for voltage level', end='', flush=True)
+         self.poutput('waiting for voltage level')
+         self.printMonitorHeader()
+         self.printMonitorRow()
          while (True):
             if (self.statusString(self.hv.getStatus()) != 'UP'):
+               self.printMonitorRow()
                time.sleep(1)
-               print('.', end='', flush=True)
                continue
             else:
-               print(f'\nVset = {v}V reached - collecting samples', end='', flush=True)
+               self.printMonitorRow()
+               self.poutput(f'Vset = {v}V reached - collecting samples')
                # wait for voltage leveling
                time.sleep(2)
                Vtemp = []
+               self.printMonitorHeader()
                for _ in range(0,10):
-                  print('.', end='', flush=True)
+                  self.printMonitorRow()
                   Vtemp.append(self.hv.getVoltage())
                   time.sleep(0.5)
                Vmeas = np.array(Vtemp)
@@ -536,7 +542,7 @@ class HighVoltageApp(cmd2.Cmd):
                Vmeas = np.delete(Vmeas, 0)
                Vmeas = np.delete(Vmeas, len(Vmeas)-1)
                Vread.append(Vmeas.mean())
-               self.poutput(f'\n{Vmeas}')
+               self.poutput(f'{Vmeas}')
                self.poutput(f'mean = {Vmeas.mean()}')
                break
 
@@ -558,7 +564,7 @@ class HighVoltageApp(cmd2.Cmd):
       if (str(ans).upper() == 'Y'):
          self.hv.writeCalibSlope(float(alpha[0][0]))
          self.hv.writeCalibOffset(float(alpha[1][0]))
-         print('OK')
+         self.poutput('OK')
          
       self.poutput('stop calibration with status=DOWN Vset=10V')
       self.hv.setVoltageSet(10)

@@ -1,4 +1,5 @@
 import minimalmodbus
+import struct
 
 class HVModbus():
    def __init__(self):
@@ -165,35 +166,29 @@ class HVModbus():
       mlsb = self.dev.read_register(0x0030)
       mmsb = self.dev.read_register(0x0031)
       calibm = ((mmsb << 16) + mlsb)
-      if(calibm > 65535):
-         calibm = calibm - 131072
+      calibm = struct.unpack('l', struct.pack('L', calibm & 0xffffffff))[0]
       calibm = calibm / 1000
 
       qlsb = self.dev.read_register(0x0032)
       qmsb = self.dev.read_register(0x0033)
       calibq = ((qmsb << 16) + qlsb)
-      if(calibq > 65535):
-         calibq = calibq - 131072
+      calibq = struct.unpack('l', struct.pack('L', calibq & 0xffffffff))[0]
       calibq = calibq / 1000
 
       return (calibm, calibq)
 
    def writeCalibSlope(self, slope):
       slope = int(slope * 1000)
-      if(slope < 0):
-         slope = 131072 + slope
       lsb = (slope & 0xFFFF)
-      msb = slope >> 16
+      msb = (slope >> 16) & 0xFFFF
 
       self.dev.write_register(0x0030, lsb)
       self.dev.write_register(0x0031, msb)
 
    def writeCalibOffset(self, offset):
       offset = int(offset * 1000)
-      if(offset < 0):
-         offset = 131072 + offset 
       lsb = (offset & 0xFFFF)
-      msb = offset >> 16
+      msb = (offset >> 16) & 0xFFFF
 
       self.dev.write_register(0x0032, lsb)
       self.dev.write_register(0x0033, msb)

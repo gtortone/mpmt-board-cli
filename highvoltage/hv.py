@@ -94,6 +94,9 @@ class HighVoltageApp(cmd2.Cmd):
          self.ansi_print(self.bright_red(f'HV module not connected - use select command'))
          return False
 
+   def checkPassword(self, password):
+      return (password == HV_PASS)
+
    def select(self, address):
       if(self.checkAddress(address)):
          if (self.hv.open(self.port, address)):
@@ -326,10 +329,10 @@ class HighVoltageApp(cmd2.Cmd):
          return
       info = self.hv.getInfo()
       (m,q) = self.hv.readCalibRegisters()
-      self.poutput(f'{"FW ver": <20}: {info[0]}.{info[1]}')
-      self.poutput(f'{"PM s/n": <20}: {info[2]}')
-      self.poutput(f'{"HVPCB s/n": <20}: {info[3]}')
-      self.poutput(f'{"IFPCB s/n": <20}: {info[4]}')
+      self.poutput(f'{"FW ver": <20}: {info[0]}')
+      self.poutput(f'{"PMT s/n": <20}: {info[1]}')
+      self.poutput(f'{"HV s/n": <20}: {info[2]}')
+      self.poutput(f'{"FEB s/n": <20}: {info[3]}')
       self.poutput(f'{"Vref": <20}: {self.hv.getVref()} mV') 
       self.poutput(f'{"Calibration slope": <20}: {m}')
       self.poutput(f'{"Calibration offset": <20}: {q}')
@@ -378,41 +381,43 @@ class HighVoltageApp(cmd2.Cmd):
    def do_threshold(self, args: argparse.Namespace) -> None:
       if (self.checkConnection() is False):
          return
-      self.hv.setThreshold(args.value)
-
+      if (self.checkPassword(getpass.getpass())):
+         self.hv.setThreshold(args.value)
+      else:
+         self.ansi_print(self.bright_red(f'password not correct'))
    #
    # serial
    #
    serial_parser = argparse.ArgumentParser()
    serial_subparsers = serial_parser.add_subparsers(title='subcommands', help='subcommand help')
 
-   pm_parser = serial_subparsers.add_parser('pm', help='PM')
-   pm_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
+   pmt_parser = serial_subparsers.add_parser('pmt', help='PMT')
+   pmt_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
 
    hv_parser = serial_subparsers.add_parser('hv', help='HV')
    hv_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
 
-   if_parser = serial_subparsers.add_parser('if', help='IF')
-   if_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
+   feb_parser = serial_subparsers.add_parser('feb', help='FEB')
+   feb_parser.add_argument('sn', type=functools.partial(checkLength, minVal=1, maxVal=12), help='serial number (max 12 char)')
 
-   def serial_pm(self, args):
+   def serial_pmt(self, args):
       if (self.checkConnection() is False):
          return
-      self.hv.setPMSerialNumber(args.sn)
+      self.hv.setPMTSerialNumber(args.sn)
 
    def serial_hv(self, args):
       if (self.checkConnection() is False):
          return
       self.hv.setHVSerialNumber(args.sn)
 
-   def serial_if(self, args):
+   def serial_feb(self, args):
       if (self.checkConnection() is False):
          return
-      self.hv.setIFSerialNumber(args.sn)
+      self.hv.setFEBSerialNumber(args.sn)
 
-   pm_parser.set_defaults(func=serial_pm)
+   pmt_parser.set_defaults(func=serial_pmt)
    hv_parser.set_defaults(func=serial_hv)
-   if_parser.set_defaults(func=serial_if)
+   feb_parser.set_defaults(func=serial_feb)
 
    @cmd2.with_argparser(serial_parser)
    @cmd2.with_category("High Voltage commands")
@@ -422,8 +427,7 @@ class HighVoltageApp(cmd2.Cmd):
          return
       func = getattr(args, 'func', None)
       if func is not None:
-         password = getpass.getpass()
-         if (password == HV_PASS):
+         if (self.checkPassword(getpass.getpass())):
             func(self, args)
          else:
             self.ansi_print(self.bright_red(f'password not correct'))
@@ -441,8 +445,7 @@ class HighVoltageApp(cmd2.Cmd):
    def do_address(self, args: argparse.Namespace) -> None:
       if (self.checkConnection() is False):
          return
-      password = getpass.getpass()
-      if (password == HV_PASS):
+      if (self.checkPassword(getpass.getpass())):
          self.hv.setModbusAddress(args.value)
          self.select(args.value)
       else:
@@ -458,7 +461,10 @@ class HighVoltageApp(cmd2.Cmd):
    def do_slope(self, args: argparse.Namespace) -> None:
       if (self.checkConnection() is False):
          return
-      self.hv.writeCalibSlope(args.value)
+      if (self.checkPassword(getpass.getpass())):
+         self.hv.writeCalibSlope(args.value)
+      else:
+         self.ansi_print(self.bright_red(f'password not correct'))
 
    #
    # offset
@@ -470,7 +476,10 @@ class HighVoltageApp(cmd2.Cmd):
    def do_offset(self, args: argparse.Namespace) -> None:
       if (self.checkConnection() is False):
          return
-      self.hv.writeCalibOffset(args.value)
+      if (self.checkPassword(getpass.getpass())):
+         self.hv.writeCalibOffset(args.value)
+      else:
+         self.ansi_print(self.bright_red(f'password not correct'))
 
    #
    # calibration
@@ -481,6 +490,10 @@ class HighVoltageApp(cmd2.Cmd):
    @cmd2.with_category("High Voltage commands")
    def do_calibration(self, args: argparse.Namespace) -> None:
       if (self.checkConnection() is False):
+         return
+
+      if (not self.checkPassword(getpass.getpass())):
+         self.ansi_print(self.bright_red(f'password not correct'))
          return
 
       ans = input(self.bright_yellow('WARNING: calibration is a time consuming task - confirm (Y/N) '))

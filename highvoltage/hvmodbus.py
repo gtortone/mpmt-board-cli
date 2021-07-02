@@ -123,21 +123,19 @@ class HVModbus():
       self.dev.write_bit(2, True)
 
    def getInfo(self):
-      fwver = self.dev.read_register(0x0002)
-      fwmsb = (fwver & 0xFF00) >> 8
-      fwlsb = (fwver & 0x00FF)
-      pmsn = self.dev.read_string(0x0008, 6)
+      fwver = self.dev.read_string(0x0002, 2)
+      pmtsn = self.dev.read_string(0x0008, 6)
       hvsn = self.dev.read_string(0x000E, 6)
-      ifsn = self.dev.read_string(0x0014, 6)
-      return (fwmsb, fwlsb, pmsn, hvsn, ifsn)
+      febsn = self.dev.read_string(0x0014, 6)
+      return (fwver, pmtsn, hvsn, febsn)
 
-   def setPMSerialNumber(self, sn):
+   def setPMTSerialNumber(self, sn):
       self.dev.write_string(0x0008, sn, 6)
 
    def setHVSerialNumber(self, sn):
       self.dev.write_string(0x000E, sn, 6)
 
-   def setIFSerialNumber(self, sn):
+   def setFEBSerialNumber(self, sn):
       self.dev.write_string(0x0014, sn, 6)
 
    def setModbusAddress(self, addr):
@@ -167,18 +165,18 @@ class HVModbus():
       mmsb = self.dev.read_register(0x0031)
       calibm = ((mmsb << 16) + mlsb)
       calibm = struct.unpack('l', struct.pack('L', calibm & 0xffffffff))[0]
-      calibm = calibm / 1000
+      calibm = calibm / 10000
 
       qlsb = self.dev.read_register(0x0032)
       qmsb = self.dev.read_register(0x0033)
       calibq = ((qmsb << 16) + qlsb)
       calibq = struct.unpack('l', struct.pack('L', calibq & 0xffffffff))[0]
-      calibq = calibq / 1000
+      calibq = calibq / 10000
 
       return (calibm, calibq)
 
    def writeCalibSlope(self, slope):
-      slope = int(slope * 1000)
+      slope = int(slope * 10000)
       lsb = (slope & 0xFFFF)
       msb = (slope >> 16) & 0xFFFF
 
@@ -186,7 +184,7 @@ class HVModbus():
       self.dev.write_register(0x0031, msb)
 
    def writeCalibOffset(self, offset):
-      offset = int(offset * 1000)
+      offset = int(offset * 10000)
       lsb = (offset & 0xFFFF)
       msb = (offset >> 16) & 0xFFFF
 

@@ -1,7 +1,7 @@
 import minimalmodbus
 import struct
 
-class HVModbus():
+class HVModbus:
    def __init__(self):
       self.dev = None
       self.address = None

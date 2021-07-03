@@ -507,7 +507,7 @@ class HighVoltageApp(cmd2.Cmd):
       self.hv.writeCalibSlope(1)
       self.hv.writeCalibOffset(0)
 
-      Vexpect = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500]
+      Vexpect = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400]
       Vread = []
       
       self.poutput('set fast rampup/rampdown rate (25 V/s)')

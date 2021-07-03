@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import smbus
+import smbus2
 import time
 import sys
 from byteutils import *
@@ -11,7 +11,7 @@ class BME280:
       self.bus = bus
       self.address = address
       try:
-         self.i2cbus = smbus.SMBus(bus)
+         self.i2cbus = smbus2.SMBus(bus)
       except IOError:
          print(f"E: I2C bus {bus} not found")
          sys.exit(-1)

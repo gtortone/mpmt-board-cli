@@ -1,4 +1,4 @@
-import smbus
+import smbus2
 import time
 import sys
 from byteutils import *
@@ -94,7 +94,7 @@ class BMX160:
       self.bus = bus
       self.address = address
       try:
-         self.i2cbus = smbus.SMBus(bus)
+         self.i2cbus = smbus2.SMBus(bus)
       except IOError:
          print(f"E: I2C bus {bus} not found")
          sys.exit(-1)
@@ -187,7 +187,7 @@ class BMX160:
          self.accelRange = self._BMX160_ACCEL_MG_LSB_2G
 
    def readAll(self):
-      data = self.i2cbus.read_i2c_block_data(self.address, self._BMX160_MAG_DATA_ADDR)
+      data = self.i2cbus.read_i2c_block_data(self.address, self._BMX160_MAG_DATA_ADDR, 20)
       if (data[1] & 0x80):
          magnx = - 0x10000 + ((data[1] << 8) | (data[0]))
       else:

@@ -58,20 +58,22 @@ class TLA2024:
    def readAll(self):
       output = []
       mux = [ 0b100, 0b101, 0b110, 0b111 ]
+      vfs = [ 0b000, 0b010, 0b001, 0b010 ]   # AIN0: 6.144V, AIN1: 2.048V, AIN2: 4.096V, AIN3: 2.048V
+      mul = [ 3, 1, 2, 1 ]                   # AIN0: 3mV/LSB, AIN1: 1mV/LSB, AIN2: 2mV/LSB, AIN3: 1mV/LSB
       cr = CR()
       cr.os = 1         # start conversion
-      cr.pga = 0b001    # FSR = +/- 4.096V - LSB size 2mV
       cr.mode = 1       # single shot conversion mode
       cr.dr = 0b100     # data rate 1600 SPS
       cr.reserved = 3   # fixed value
 
-      for value in mux:
-         cr.mux = value
+      for i in range(0,4):
+         cr.mux = mux[i]
+         cr.pga = vfs[i]
          self.writeConfRegister(cr.asWord)
          while (not self.isReady()):
             None
          # append value in mV
-         output.append(self.readDataRegister() * 2)   
+         output.append(self.readDataRegister() * mul[i])   
 
       return output
 

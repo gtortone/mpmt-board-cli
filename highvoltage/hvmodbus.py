@@ -123,7 +123,7 @@ class HVModbus:
       self.dev.write_bit(2, True)
 
    def getInfo(self):
-      fwver = self.dev.read_string(0x0002, 2)
+      fwver = self.dev.read_string(0x0002, 1)
       pmtsn = self.dev.read_string(0x0008, 6)
       hvsn = self.dev.read_string(0x000E, 6)
       febsn = self.dev.read_string(0x0014, 6)

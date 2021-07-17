@@ -19,7 +19,6 @@ from typing import (
     List,
 )
 
-
 HV_PASS = 'hv4all'
 
 class HighVoltageApp(cmd2.Cmd):
@@ -170,7 +169,7 @@ class HighVoltageApp(cmd2.Cmd):
 
    def printMonitorHeader(self):
       self.ansi_print(self.bright_cyan(self.st.generate_data_row(['','status','Vset','V','I','T','rate UP/DN','limit V/I/T/TRIP','trigger thr','alarm'])))
-      self.ansi_print(self.bright_blue(self.st.generate_data_row(['','','[V]','[V]','[uA]','[°C]','[V/s]/[V/s]','[V]/[uA]/[°C]/[ms]','[mV]',''])))
+      self.ansi_print(self.bright_blue(self.st.generate_data_row(['','','[V]','[V]','[uA]','[°C]','[V/s]/[V/s]','[V]/[uA]/[°C]/[s]','[mV]',''])))
       
    def printMonitorRow(self):
       monData = self.hv.readMonRegisters()
@@ -237,7 +236,7 @@ class HighVoltageApp(cmd2.Cmd):
    temperature_parser.add_argument('value',  type=functools.partial(checkRange, minVal=20, maxVal=70), help='temperature threshold [°C] (min:20 max:70)')
 
    triptime_parser = limit_subparsers.add_parser('triptime', help='trip time limit')
-   triptime_parser.add_argument('value',  type=functools.partial(checkRange, minVal=1, maxVal=1000), help='trip time threshold [ms] (min:1 max:1000)')
+   triptime_parser.add_argument('value',  type=functools.partial(checkRange, minVal=1, maxVal=1000), help='trip time threshold [s] (min:1 max:1000)')
 
    def limit_current(self, args):
       self.hv.setLimitCurrent(args.value)
@@ -272,7 +271,7 @@ class HighVoltageApp(cmd2.Cmd):
    # voltage
    #
    voltage_parser = argparse.ArgumentParser()
-   voltage_parser.add_argument('value', type=functools.partial(checkRange, minVal=0, maxVal=1500), help='voltage level [V] (min:0 max:1500)')
+   voltage_parser.add_argument('value', type=functools.partial(checkRange, minVal=25, maxVal=1500), help='voltage level [V] (min:25 max:1500)')
    
    @cmd2.with_argparser(voltage_parser)
    @cmd2.with_category("High Voltage commands")
@@ -507,7 +506,7 @@ class HighVoltageApp(cmd2.Cmd):
       self.hv.writeCalibSlope(1)
       self.hv.writeCalibOffset(0)
 
-      Vexpect = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400]
+      Vexpect = [25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400]
       Vread = []
       
       self.poutput('set fast rampup/rampdown rate (25 V/s)')

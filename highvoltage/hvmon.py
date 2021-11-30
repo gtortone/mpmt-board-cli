@@ -145,6 +145,7 @@ try:
                 writer.writerow(mon)
                 if (i % 20 == 0):
                     printHeader()
+                    fhand.flush()
                     i = 1
                 else: i += 1
                 print(st.generate_data_row([mon['address'], mon['status'], mon['Vset'], f'{mon["V"]:.3f}', f'{mon["I"]:.3f}', mon['T'], f'{mon["rateUP"]}/{mon["rateDN"]}', f'{mon["limitV"]}/{mon["limitI"]}/{mon["limitT"]}/{mon["limitTRIP"]}', mon['threshold'], mon['alarm']]))

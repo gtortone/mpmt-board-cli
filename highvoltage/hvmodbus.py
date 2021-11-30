@@ -9,7 +9,7 @@ class HVModbus:
    def open(self, serial, addr):
       if (self.probe(serial, addr)):
          self.dev = minimalmodbus.Instrument(serial, addr)
-         self.dev.serial.baudrate = 9600
+         self.dev.serial.baudrate = 115200
          self.dev.serial.timeout = 0.5
          self.dev.mode = minimalmodbus.MODE_RTU
          #self.dev.debug = True
@@ -20,7 +20,7 @@ class HVModbus:
 
    def probe(self, serial, addr):
       dev =  minimalmodbus.Instrument(serial, addr)
-      dev.serial.baudrate = 9600
+      dev.serial.baudrate = 115200
       dev.serial.timeout = 0.5
       dev.mode = minimalmodbus.MODE_RTU
 

@@ -327,14 +327,15 @@ class HighVoltageApp(cmd2.Cmd):
       if (self.checkConnection() is False):
          return
       info = self.hv.getInfo()
-      (m,q) = self.hv.readCalibRegisters()
-      self.poutput(f'{"FW ver": <20}: {info[0]}')
-      self.poutput(f'{"PMT s/n": <20}: {info[1]}')
-      self.poutput(f'{"HV s/n": <20}: {info[2]}')
-      self.poutput(f'{"FEB s/n": <20}: {info[3]}')
-      self.poutput(f'{"Vref": <20}: {self.hv.getVref()} mV') 
-      self.poutput(f'{"Calibration slope": <20}: {m}')
-      self.poutput(f'{"Calibration offset": <20}: {q}')
+      (m,q,t) = self.hv.readCalibRegisters()
+      self.poutput(f'{"FW ver": <25}: {info[0]}')
+      self.poutput(f'{"PMT s/n": <25}: {info[1]}')
+      self.poutput(f'{"HV s/n": <25}: {info[2]}')
+      self.poutput(f'{"FEB s/n": <25}: {info[3]}')
+      self.poutput(f'{"Vref": <25}: {self.hv.getVref()} mV') 
+      self.poutput(f'{"Calibration slope": <25}: {m}')
+      self.poutput(f'{"Calibration offset": <25}: {q}')
+      self.poutput(f'{"Calibration discrim.": <25}: {int(t)} mV')
 
    #
    # mon
@@ -479,6 +480,22 @@ class HighVoltageApp(cmd2.Cmd):
          self.hv.writeCalibOffset(args.value)
       else:
          self.ansi_print(self.bright_red(f'password not correct'))
+
+   #
+   # discr
+   #
+   discr_parser = argparse.ArgumentParser()
+   discr_parser.add_argument('value', type=int, help='calibration discriminator value')
+   @cmd2.with_argparser(discr_parser)
+   @cmd2.with_category("High Voltage commands")
+   def do_discr(self, args: argparse.Namespace) -> None:
+      if (self.checkConnection() is False):
+         return
+      if (self.checkPassword(getpass.getpass())):
+         self.hv.writeCalibDiscr(args.value)
+      else:
+         self.ansi_print(self.bright_red(f'password not correct'))
+
 
    #
    # calibration

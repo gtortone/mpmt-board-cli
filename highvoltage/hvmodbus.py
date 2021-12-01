@@ -173,7 +173,10 @@ class HVModbus:
       calibq = struct.unpack('l', struct.pack('L', calibq & 0xffffffff))[0]
       calibq = calibq / 10000
 
-      return (calibm, calibq)
+      calibt = self.dev.read_register(0x0034)
+      calibt = calibt / 1.6890722
+
+      return (calibm, calibq, calibt)
 
    def writeCalibSlope(self, slope):
       slope = int(slope * 10000)
@@ -190,3 +193,8 @@ class HVModbus:
 
       self.dev.write_register(0x0032, lsb)
       self.dev.write_register(0x0033, msb)
+   
+   def writeCalibDiscr(self, discr):
+      discr = int(discr * 1.6890722)
+
+      self.dev.write_register(0x0034, discr)

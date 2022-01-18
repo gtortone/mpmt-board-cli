@@ -22,7 +22,7 @@ class RunControlApp(cmd2.Cmd):
       self.prompt = 'RC> '
       self.prompt = cmd2.ansi.style(self.prompt, fg='bright_green')
 
-      self.maxRegisterAddress = 20
+      self.maxRegisterAddress = 50
 
       self.columns: List[Column] = list()
       self.columns.append(Column("31...24", width=10, header_horiz_align=HorizontalAlignment.CENTER, data_horiz_align=HorizontalAlignment.CENTER))

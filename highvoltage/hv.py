@@ -108,7 +108,7 @@ class HighVoltageApp(cmd2.Cmd):
          else:
             self.prompt = self.bright_green(f'HV [{self.hv.getAddress()}] > ')
       else:
-         self.ansi_print(self.bright_red(f'E: modbus address outside boundary - min:0 max:20'))
+         self.ansi_print(self.bright_red(f'E: modbus address outside boundary - min:1 max:20'))
 
    def checkLength(value, minVal, maxVal):
       if len(value) < minVal or len(value) > maxVal:
@@ -179,7 +179,7 @@ class HighVoltageApp(cmd2.Cmd):
    # select
    #
    select_parser = argparse.ArgumentParser()
-   select_parser.add_argument('address', type=int, help='modbus address [0...20]')
+   select_parser.add_argument('address', type=int, help='modbus address [1...20]')
 
    @cmd2.with_argparser(select_parser)
    @cmd2.with_category("High Voltage commands")
@@ -363,7 +363,7 @@ class HighVoltageApp(cmd2.Cmd):
    @cmd2.with_argparser(probe_parser)
    @cmd2.with_category("High Voltage commands")
    def do_probe(self, args: argparse.Namespace) -> None:
-      for addr in range(0,21):
+      for addr in range(1,21):
          found = self.hv.probe(self.port, addr)
          if(found):
             self.ansi_print(self.bright_green(f'{addr}'))

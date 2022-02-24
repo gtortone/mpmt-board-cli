@@ -20,11 +20,11 @@ class HVModbus:
       else:
          return False
 
-   def probe(self, serial, addr):
+   def probe(self, serial, addr, timeout=0.1):
       dev =  minimalmodbus.Instrument(serial, addr)
       dev.serial.baudrate = 115200
       # low timeout to do fast probing
-      dev.serial.timeout = 0.25
+      dev.serial.timeout = timeout
       dev.mode = minimalmodbus.MODE_RTU
 
       found = False
@@ -32,6 +32,7 @@ class HVModbus:
          try:
             dev.read_register(0x00)  # read modbus address register
          except IOError:
+            dev.serial.timeout += 0.1
             None
          else:
             self.devset[addr] = dev

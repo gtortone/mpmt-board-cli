@@ -54,7 +54,7 @@ class HVModbus:
       else: d = self.dev
       return d.read_register(0x0006)
 
-   def getVoltage(self, denum=None):
+   def getVoltage(self, devnum=None):
       if devnum: d = self.devset[devnum]
       else: d = self.dev
       lsb = d.read_register(0x002A)

@@ -3,7 +3,7 @@ import struct
 
 class HVModbus:
    def __init__(self):
-      self.devset = [None] * 20
+      self.devset = [None] * 21     # 1...20 for new boards default address (20)
       self.dev = None
       self.address = None
 

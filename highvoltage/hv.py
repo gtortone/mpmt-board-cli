@@ -447,6 +447,7 @@ class HighVoltageApp(cmd2.Cmd):
          return
       if (self.checkPassword(getpass.getpass())):
          self.hv.setModbusAddress(args.value)
+         time.sleep(0.5)
          self.select(args.value)
       else:
          self.ansi_print(self.bright_red(f'password not correct'))

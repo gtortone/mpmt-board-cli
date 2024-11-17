@@ -127,11 +127,11 @@ columns.append(Column("", width=13, data_horiz_align=HorizontalAlignment.RIGHT))
 columns.append(Column("", width=14, data_horiz_align=HorizontalAlignment.CENTER))
 
 st = SimpleTable(columns, divider_char=None)
-printHeader()
 try:
     i = 1
     while True:
         start = datetime.datetime.now()
+        printHeader()
         for hv in hvList:
             try:
                 mon = hv.readMonRegisters()
@@ -145,16 +145,14 @@ try:
                 mon['status'] = statusString(mon['status'])
                 mon['alarm'] = alarmString(mon['alarm'])
                 writer.writerow(mon)
-                if (i % 20 == 0):
-                    printHeader()
-                    fhand.flush()
-                    i = 1
-                else: i += 1
                 print(st.generate_data_row([mon['address'], mon['status'], mon['Vset'], f'{mon["V"]:.3f}', f'{mon["I"]:.3f}', mon['T'], f'{mon["rateUP"]}/{mon["rateDN"]}', f'{mon["limitV"]}/{mon["limitI"]}/{mon["limitT"]}/{mon["limitTRIP"]}', mon['threshold'], mon['alarm']]))
                 stop = datetime.datetime.now()
+                fhand.flush()
 
         delta = stop - start
-        time.sleep(((args.freq * 1000) - (delta.total_seconds() * 1000)) / 1000)
+        sleep_value = ((args.freq * 1000) - (delta.total_seconds() * 1000)) / 1000
+        if sleep_value > 0:
+           time.sleep(((args.freq * 1000) - (delta.total_seconds() * 1000)) / 1000)
 
 except KeyboardInterrupt:
     pass

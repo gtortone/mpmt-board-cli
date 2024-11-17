@@ -129,13 +129,20 @@ class HVModbus:
       value = (msb << 16) + lsb
       return (value / 1000)
 
+   def convertTemperature(self, value):
+      q = (value & 0xFF) / 1000
+      i = (value >> 8) & 0xFF
+      return round(q+i, 1)
+
    def getTemperature(self, devnum=None):
       if self.param.mode == 'rtu':
          if devnum: d = self.devset[devnum]
          else: d = self.dev
-         return d.read_register(0x0007)
+         value = d.read_register(0x0007)
       elif self.param.mode == 'tcp':
-         return self.client.read_holding_registers(0x0007)[0]
+         value = self.client.read_holding_registers(0x0007)[0]
+
+      return self.convertTemperature(value)
 
    def getRate(self, fmt=str, devnum=None):
       rup = rdn = 0
@@ -349,7 +356,7 @@ class HVModbus:
       monData['Vset'] = regs[0x0026]
       monData['V'] = ((regs[0x002B] << 16) + regs[0x002A]) / 1000
       monData['I'] = ((regs[0x0029] << 16) + regs[0x0028]) / 1000
-      monData['T'] = regs[0x0007]
+      monData['T'] = self.convertTemperature(regs[0x0007])
       monData['rateUP'] = regs[0x0023]
       monData['rateDN'] = regs[0x0024]
       monData['limitV'] = regs[0x0027]

@@ -65,7 +65,8 @@ class HVModbus:
       return found
 
    def probeTCP(self, addr):
-      self.client.unit_id = addr
+      #self.client.unit_id = addr
+      self.client = ModbusClient(host=self.param.host, port=502, unit_id=addr, auto_open=True, timeout=5)
       if self.client.read_holding_registers(0x00) is None:
          return False
       else:

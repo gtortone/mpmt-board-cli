@@ -23,7 +23,7 @@ HV_PASS = 'hv4all'
 
 class HighVoltageApp(cmd2.Cmd):
 
-   def __init__(self, port):
+   def __init__(self, mode, param):
       super().__init__(allow_cli_args=False)
       del cmd2.Cmd.do_edit
       del cmd2.Cmd.do_macro
@@ -31,16 +31,17 @@ class HighVoltageApp(cmd2.Cmd):
       del cmd2.Cmd.do_shell
       del cmd2.Cmd.do_shortcuts
 
-      self.port = port
+      self.param = param
+      self.port = self.param.port
       self.allow_style = cmd2.ansi.STYLE_TERMINAL
-      self.prompt = self.bright_black('HV [] > ')
+      self.prompt = self.bright_black(f'HV:{self.param.mode} [] > ')
 
       cmd2.categorize(
          (cmd2.Cmd.do_alias, cmd2.Cmd.do_help, cmd2.Cmd.do_history, cmd2.Cmd.do_quit, cmd2.Cmd.do_set, cmd2.Cmd.do_run_script),
          "General commands" 
       )
    
-      self.hv = HVModbus()
+      self.hv = HVModbus(param)
 
    def ansi_print(self, text):
       cmd2.ansi.style_aware_write(sys.stdout, text + '\n')
@@ -98,15 +99,15 @@ class HighVoltageApp(cmd2.Cmd):
 
    def select(self, address):
       if(self.checkAddress(address)):
-         if (self.hv.open(self.port, address)):
+         if (self.hv.open(address)):
             self.poutput(f'HV module with address {address} selected')
          else:
             self.ansi_print(self.bright_red(f'HV module with address {address} not present'))
 
          if (self.hv.getAddress() is None):
-            self.prompt = self.bright_black('HV [] > ')
+            self.prompt = self.bright_black(f'HV:{self.param.mode} [] > ')
          else:
-            self.prompt = self.bright_green(f'HV [{self.hv.getAddress()}] > ')
+            self.prompt = self.bright_green(f'HV:{self.param.mode} [{self.hv.getAddress()}] > ')
       else:
          self.ansi_print(self.bright_red(f'E: modbus address outside boundary - min:1 max:20'))
 
@@ -364,7 +365,7 @@ class HighVoltageApp(cmd2.Cmd):
    @cmd2.with_category("High Voltage commands")
    def do_probe(self, args: argparse.Namespace) -> None:
       for addr in range(1,21):
-         found = self.hv.probe(self.port, addr)
+         found = self.hv.probe(addr)
          if(found):
             self.ansi_print(self.bright_green(f'{addr}'))
          else:
@@ -604,8 +605,10 @@ class HighVoltageApp(cmd2.Cmd):
 
 if __name__ == '__main__':
    parser = argparse.ArgumentParser()
-   parser.add_argument('--port', action='store', type=str, help='serial port device (default: /dev/ttyPS1)', default='/dev/ttyPS1')
+   parser.add_argument('--mode', default='rtu', const='rtu', nargs='?', choices=['rtu', 'tcp'], help='set modbus interface (default: %(default)s)')
+   parser.add_argument('--port', action='store', type=str, help='serial port device (default: /dev/ttyPS2)', default='/dev/ttyPS2')
+   parser.add_argument('--host', action='store', type=str, help='mbusd hostname (default: localhost)', default='localhost')
    args = parser.parse_args()
 
-   app = HighVoltageApp(args.port)
+   app = HighVoltageApp(args.mode,args)
    app.cmdloop()

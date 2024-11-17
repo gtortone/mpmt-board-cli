@@ -55,6 +55,8 @@ def printHeader():
     print(st.generate_data_row(['','','[V]','[V]','[uA]','[°C]','[V/s]/[V/s]','[V]/[uA]/[°C]/[s]','[mV]','']))
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--mode', default='rtu', const='rtu', nargs='?', choices=['rtu', 'tcp'], help='set modbus interface (default: %(default)s)') 
+parser.add_argument('--host', action='store', type=str, help='mbusd hostname (default: localhost)', default='localhost')
 parser.add_argument('--port', action='store', type=str, help='serial port device (default: /dev/ttyPS1)', default='/dev/ttyPS1')
 parser.add_argument('--freq', action='store', type=int, help='monitoring frequency (default: 1 second)', default=1)
 parser.add_argument('-m', '--modules', help='comma-separated list of modules to monitor', required=True)
@@ -73,8 +75,8 @@ except:
 
 hvList = []
 for addr in hvModList:
-    hv = HVModbus()
-    res = hv.open(args.port, addr)
+    hv = HVModbus(args)
+    res = hv.open(addr)
     if res != True:
         print(f'E: failed to open module {addr}')
         sys.exit(-1)

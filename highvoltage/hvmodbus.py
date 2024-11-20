@@ -406,6 +406,9 @@ class HVModbus:
             self.client.unit_id = devnum
          regs = self.client.read_holding_registers(baseAddress, 48)
 
+      if regs is None:
+         return None
+
       monData['status'] = regs[0x0006]
       monData['Vset'] = regs[0x0026]
       monData['V'] = ((regs[0x002B] << 16) + regs[0x002A]) / 1000

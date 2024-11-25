@@ -87,6 +87,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          return self.client.read_holding_registers(0x0006)[0]
 
    def getVoltage(self, devnum=None):
@@ -99,6 +101,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          lsb = self.client.read_holding_registers(0x002A)[0]
          msb = self.client.read_holding_registers(0x002B)[0]
       value = (msb << 16) + lsb
@@ -112,6 +116,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          return self.client.read_holding_registers(0x0026)[0]
 
    def setVoltageSet(self, value, devnum=None):
@@ -122,6 +128,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0026, value) 
 
    def getCurrent(self, devnum=None):
@@ -134,6 +142,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          lsb = self.client.read_holding_registers(0x0028)[0]
          msb = self.client.read_holding_registers(0x0029)[0]
       value = (msb << 16) + lsb
@@ -152,6 +162,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          value = self.client.read_holding_registers(0x0007)[0]
 
       return self.convertTemperature(value)
@@ -166,6 +178,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          rup = self.client.read_holding_registers(0x0023)[0]
          rdn = self.client.read_holding_registers(0x0024)[0]
       if (fmt == str):
@@ -181,6 +195,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0023, value) 
 
    def setRateRampdown(self, value, devnum=None):
@@ -191,6 +207,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0024, value)
 
    def getLimit(self, fmt=str, devnum=None):
@@ -205,6 +223,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          lv = self.client.read_holding_registers(0x0027)[0]
          li = self.client.read_holding_registers(0x0025)[0]
          lt = self.client.read_holding_registers(0x002F)[0]
@@ -222,6 +242,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0027, value)
 
    def setLimitCurrent(self, value, devnum=None):
@@ -232,6 +254,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0025, value)
 
    def setLimitTemperature(self, value, devnum=None):
@@ -242,6 +266,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x002F, value)
 
    def setLimitTriptime(self, value, devnum=None):
@@ -252,6 +278,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0022, value)
 
    def setThreshold(self, value, devnum=None):
@@ -262,6 +290,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x002D, value)
 
    def getThreshold(self, devnum=None):
@@ -272,6 +302,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          return self.client.read_holding_registers(0x002D)[0]
 
    def getAlarm(self, devnum=None):
@@ -282,6 +314,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          return self.client.read_holding_registers(0x002E)[0]
 
    def getVref(self, devnum=None):
@@ -292,6 +326,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          return self.client.read_holding_registers(0x002C)[0]
 
    def powerOn(self, devnum=None):
@@ -302,6 +338,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_coil(1, True)
 
    def powerOff(self, devnum=None):
@@ -312,6 +350,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_coil(1, False)
 
    def reset(self, devnum=None):
@@ -322,6 +362,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_coil(2, True)
 
    def getInfo(self, devnum=None):
@@ -336,6 +378,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          l = self.client.read_holding_registers(0x0002, 1)
          fwver = struct.pack(f'>{len(l)}h', *l).decode()
          l = self.client.read_holding_registers(0x0008, 6)
@@ -357,6 +401,8 @@ class HVModbus:
          data = struct.pack(f'>{len(l)}h', *l)
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_multiple_registers(0x0008, data)
 
    def setHVSerialNumber(self, sn, devnum=None):
@@ -369,6 +415,8 @@ class HVModbus:
          data = struct.pack(f'>{len(l)}h', *l)
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_multiple_registers(0x000E, data)
 
    def setFEBSerialNumber(self, sn, devnum=None):
@@ -381,6 +429,8 @@ class HVModbus:
          data = struct.pack(f'>{len(l)}h', *l)
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_multiple_registers(0x0014, data)
       
    def setModbusAddress(self, addr, devnum=None):
@@ -391,6 +441,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0000, addr)
 
    def readMonRegisters(self, devnum=None):
@@ -404,6 +456,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          regs = self.client.read_holding_registers(baseAddress, 48)
 
       if regs is None:
@@ -438,6 +492,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          mlsb = self.client.read_holding_registers(0x0030)[0]
          mmlsb = self.client.read_holding_registers(0x0031)[0]
          qlsb = self.client.read_holding_registers(0x0032)[0]
@@ -469,6 +525,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0030, lsb)
          self.client.write_single_register(0x0031, msb)
 
@@ -485,6 +543,8 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0032, lsb)
          self.client.write_single_register(0x0033, msb)
    
@@ -498,4 +558,6 @@ class HVModbus:
       elif self.param.mode == 'tcp':
          if devnum is not None:
             self.client.unit_id = devnum
+         else:
+            self.client.unit_id = self.address
          self.client.write_single_register(0x0034, discr)

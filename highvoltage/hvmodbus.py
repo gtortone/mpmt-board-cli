@@ -340,7 +340,7 @@ class HVModbus:
             self.client.unit_id = devnum
          else:
             self.client.unit_id = self.address
-         self.client.write_single_coil(1, True)
+         return self.client.write_single_coil(1, True)
 
    def powerOff(self, devnum=None):
       if self.param.mode == 'rtu':
@@ -352,7 +352,7 @@ class HVModbus:
             self.client.unit_id = devnum
          else:
             self.client.unit_id = self.address
-         self.client.write_single_coil(1, False)
+         return self.client.write_single_coil(1, False)
 
    def reset(self, devnum=None):
       if self.param.mode == 'rtu':
@@ -364,7 +364,7 @@ class HVModbus:
             self.client.unit_id = devnum
          else:
             self.client.unit_id = self.address
-         self.client.write_single_coil(2, True)
+         return self.client.write_single_coil(2, True)
 
    def getInfo(self, devnum=None):
       fwver = pmtsn = hvsn = febsn = ""

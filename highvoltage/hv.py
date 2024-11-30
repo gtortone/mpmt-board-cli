@@ -365,7 +365,7 @@ class HighVoltageApp(cmd2.Cmd):
    @cmd2.with_category("High Voltage commands")
    def do_probe(self, args: argparse.Namespace) -> None:
       for addr in range(1,21):
-         found = self.hv.probe(addr)
+         found = self.hv.open(addr)
          if(found):
             self.ansi_print(self.bright_green(f'{addr}'))
          else:

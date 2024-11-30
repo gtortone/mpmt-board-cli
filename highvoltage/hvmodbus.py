@@ -1,8 +1,13 @@
-import minimalmodbus
 import struct
 from enum import Enum
-from pyModbusTCP.client import ModbusClient
 from sys import exit
+
+import pymodbus.client as ModbusClient
+from pymodbus import (
+    FramerType,
+    ModbusException,
+    pymodbus_apply_logging_config,
+)
 
 class HVModbus:
    def __init__(self, param):
@@ -12,66 +17,37 @@ class HVModbus:
       self.address = None
       self.param = param
 
-      # in TCP mode try to connect to mbusd
       if self.param.mode == 'tcp':
-         self.client = ModbusClient(host=self.param.host, port=502, auto_open=True, timeout=5)
-         if self.client.open() is False:
+         self.client = ModbusClient.ModbusTcpClient(self.param.host, port=502, framer=FramerType.SOCKET)
+         if self.client.connect() == False:
             print(f'E: host not reachable or mbusd not running ({self.param.host})')
+            exit(1) 
+      elif self.param.mode == 'rtu':
+         self.client = ModbusClient.ModbusSerialClient(
+            self.param.port, 
+            framer=FramerType.RTU, 
+            baudrate=115200,
+            bytesize=8,
+            parity="N",
+            stopbits=1,
+            timeout=0.5
+         )
+         if self.client.connect() == False:
+            print(f'E: port not available ({self.param.port})')
             exit(1) 
 
    def open(self, addr):
-      if self.param.mode == 'rtu':
-         if (self.probe(addr)):
-            self.dev = minimalmodbus.Instrument(self.param.port, addr)
-            self.dev.serial.baudrate = 115200
-            # timeout increased for write operations
-            self.dev.serial.timeout = 0.5
-            self.dev.mode = minimalmodbus.MODE_RTU
-            #self.dev.debug = True
-            self.address = addr
-            return True
-         else:
-            return False
-      elif self.param.mode == 'tcp':
-         if(self.probeTCP(addr)):
-            return True
-
-   def probe(self, addr):
-      if self.param.mode == 'rtu':
-         return self.probeRTU(addr)
-      elif self.param.mode == 'tcp':
-         return self.probeTCP(addr)
-
-   def probeRTU(self, addr, timeout=0.1):
-      dev =  minimalmodbus.Instrument(self.param.port, addr)
-      dev.serial.baudrate = 115200
-      # low timeout to do fast probing
-      dev.serial.timeout = timeout
-      dev.mode = minimalmodbus.MODE_RTU
-
-      found = False
-      for _ in range(0,3):
-         try:
-            dev.read_register(0x00)  # read modbus address register
-         except IOError:
-            dev.serial.timeout += 0.1
-         else:
-            self.devset[addr] = dev
-            # timeout increased for write operations
-            self.devset[addr].serial.timeout = 0.5
-            found = True
-            break;
-
-      return found
-
-   def probeTCP(self, addr):
-      c = ModbusClient(host=self.param.host, port=502, unit_id=addr, auto_open=True, timeout=5)
-      reg = c.read_holding_registers(0x00)
-      if reg is None:
+      rr = None
+      try:
+         rr = self.client.read_holding_registers(address=0, count=1, slave=addr)
+      except ModbusException as e:
          return False
-      else:
-         self.address = addr
-         return True
+
+      if rr.isError():
+         return False
+
+      self.address = addr
+      return True
 
    def isConnected(self):
       return (self.address is not None)
@@ -79,426 +55,188 @@ class HVModbus:
    def getAddress(self):
       return self.address
 
-   def getStatus(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         return d.read_register(0x0006)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.read_holding_registers(0x0006)[0]
+   def getStatus(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=6, count=1, slave=slave)
+      return rr.registers[0]
 
-   def getVoltage(self, devnum=None):
-      lsb = msb = 0
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         lsb = d.read_register(0x002A)
-         msb = d.read_register(0x002B)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         lsb = self.client.read_holding_registers(0x002A)[0]
-         msb = self.client.read_holding_registers(0x002B)[0]
-      value = (msb << 16) + lsb
-      return (value / 1000)
+   def getVoltage(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x2A, count=2, slave=slave)
+      rr.registers.reverse()
+      return (self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000)
 
-   def getVoltageSet(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         return d.read_register(0x0026)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.read_holding_registers(0x0026)[0]
+   def getVoltageSet(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x26, count=1, slave=slave)
+      return rr.registers[0]
 
-   def setVoltageSet(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0026, value)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0026, value) 
+   def setVoltageSet(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x26, value=value, slave=slave)
 
-   def getCurrent(self, devnum=None):
-      lsb = msb = 0
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         lsb = d.read_register(0x0028)
-         msb = d.read_register(0x0029)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         lsb = self.client.read_holding_registers(0x0028)[0]
-         msb = self.client.read_holding_registers(0x0029)[0]
-      value = (msb << 16) + lsb
-      return (value / 1000)
+   def getCurrent(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x28, count=2, slave=slave)
+      rr.registers.reverse()
+      return (self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000)
 
    def convertTemperature(self, value):
       q = (value & 0xFF) / 1000
       i = (value >> 8) & 0xFF
       return round(q+i, 1)
 
-   def getTemperature(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         value = d.read_register(0x0007)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         value = self.client.read_holding_registers(0x0007)[0]
+   def getTemperature(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x7, count=1, slave=slave)
+      return self.convertTemperature(rr.registers[0])
 
-      return self.convertTemperature(value)
-
-   def getRate(self, fmt=str, devnum=None):
-      rup = rdn = 0
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         rup = d.read_register(0x0023)
-         rdn = d.read_register(0x0024)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         rup = self.client.read_holding_registers(0x0023)[0]
-         rdn = self.client.read_holding_registers(0x0024)[0]
+   def getRate(self, fmt=str, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x23, count=2, slave=slave)
+      rup = rr.registers[0]
+      rdn = rr.registers[1]
       if (fmt == str):
          return f'{rup}/{rdn}' 
       else:
          return (rup, rdn)
 
-   def setRateRampup(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0023, value, functioncode=6)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0023, value) 
+   def setRateRampup(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x23, value=value, slave=slave)
 
-   def setRateRampdown(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0024, value)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0024, value)
+   def setRateRampdown(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x24, value=value, slave=slave)
 
-   def getLimit(self, fmt=str, devnum=None):
-      lv = li = lt = ltt = 0
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         lv = d.read_register(0x0027)
-         li = d.read_register(0x0025)
-         lt = d.read_register(0x002F)
-         ltt = d.read_register(0x0022)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         lv = self.client.read_holding_registers(0x0027)[0]
-         li = self.client.read_holding_registers(0x0025)[0]
-         lt = self.client.read_holding_registers(0x002F)[0]
-         ltt = self.client.read_holding_registers(0x0022)[0]
+   def getLimit(self, fmt=str, slave=None):
+      slave = self.address if slave == None else slave
+
+      rr = self.client.read_holding_registers(address=0, count=48, slave=slave)
+      lv = rr.registers[0x27]
+      li = rr.registers[0x25]
+      lt = rr.registers[0x2F]
+      ltt = rr.registers[0x22]
+
       if (fmt == str):
          return f'{lv}/{li}/{lt}/{ltt}'
       else:
          return (lv, li, lt, ltt)
 
-   def setLimitVoltage(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0027, value)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0027, value)
+   def setLimitVoltage(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x27, value=value, slave=slave)
 
-   def setLimitCurrent(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0025, value)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0025, value)
+   def setLimitCurrent(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x25, value=value, slave=slave)
 
-   def setLimitTemperature(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x002F, value)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x002F, value)
+   def setLimitTemperature(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x2F, value=value, slave=slave)
 
-   def setLimitTriptime(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0022, value)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0022, value)
+   def setLimitTriptime(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x22, value=value, slave=slave)
 
-   def setThreshold(self, value, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x002D, value)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x002D, value)
+   def setThreshold(self, value, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x2D, value=value, slave=slave)
 
-   def getThreshold(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         return d.read_register(0x002D)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.read_holding_registers(0x002D)[0]
+   def getThreshold(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x2D, count=1, slave=slave)
+      return rr.registers[0]
 
-   def getAlarm(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         return d.read_register(0x002E)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.read_holding_registers(0x002E)[0]
+   def getAlarm(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x2E, count=1, slave=slave)
+      return rr.registers[0]
 
-   def getVref(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         return d.read_register(0x002C)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.read_holding_registers(0x002C)[0]
+   def getVref(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x2C, count=1, slave=slave)
+      return rr.registers[0]
 
-   def powerOn(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_bit(1, True)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.write_single_coil(1, True)
+   def powerOn(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.write_coil(address=1, value=True, slave=slave)
+      return (not rr.isError())
 
-   def powerOff(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_bit(1, False)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.write_single_coil(1, False)
+   def powerOff(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.write_coil(address=1, value=False, slave=slave)
+      return (not rr.isError())
 
-   def reset(self, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_bit(2, True)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         return self.client.write_single_coil(2, True)
+   def reset(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.write_coil(address=2, value=True, slave=slave)
+      return (not rr.isError())
 
-   def getInfo(self, devnum=None):
-      fwver = pmtsn = hvsn = febsn = ""
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         fwver = d.read_string(0x0002, 1)
-         pmtsn = d.read_string(0x0008, 6)
-         hvsn = d.read_string(0x000E, 6)
-         febsn = d.read_string(0x0014, 6)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         l = self.client.read_holding_registers(0x0002, 1)
-         fwver = struct.pack(f'>{len(l)}h', *l).decode()
-         l = self.client.read_holding_registers(0x0008, 6)
-         pmtsn = struct.pack(f'>{len(l)}h', *l).decode()
-         l = self.client.read_holding_registers(0x000E, 6)
-         hvsn = struct.pack(f'>{len(l)}h', *l).decode()
-         l = self.client.read_holding_registers(0x0014, 6)
-         febsn = struct.pack(f'>{len(l)}h', *l).decode()
-         
+   def getInfo(self, slave=None):
+      slave = self.address if slave == None else slave
+      l = self.client.read_holding_registers(address=0x02, count=1, slave=slave).registers
+      fwver = struct.pack(f'>{len(l)}h', *l).decode()
+      l = self.client.read_holding_registers(address=0x08, count=6, slave=slave).registers
+      pmtsn = struct.pack(f'>{len(l)}h', *l).decode()
+      l = self.client.read_holding_registers(address=0x0E, count=6, slave=slave).registers
+      hvsn = struct.pack(f'>{len(l)}h', *l).decode()
+      l = self.client.read_holding_registers(address=0x14, count=6, slave=slave).registers
+      febsn = struct.pack(f'>{len(l)}h', *l).decode()
       return (fwver, pmtsn, hvsn, febsn)
 
-   def setPMTSerialNumber(self, sn, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_string(0x0008, sn, 6)
-      elif self.param.mode == 'tcp':
-         l = list(bytes(sn.ljust(12), 'utf-8'))
-         data = struct.pack(f'>{len(l)}h', *l)
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_multiple_registers(0x0008, data)
+   def setPMTSerialNumber(self, sn, slave=None):
+      slave = self.address if slave == None else slave
+      data = list(bytes(sn.ljust(12), 'utf-8'))
+      self.client.write_registers(address=0x08, values=data, slave=slave)
 
-   def setHVSerialNumber(self, sn, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_string(0x000E, sn, 6)
-      elif self.param.mode == 'tcp':
-         l = list(bytes(sn.ljust(12), 'utf-8'))
-         data = struct.pack(f'>{len(l)}h', *l)
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_multiple_registers(0x000E, data)
+   def setHVSerialNumber(self, sn, slave=None):
+      slave = self.address if slave == None else slave
+      data = list(bytes(sn.ljust(12), 'utf-8'))
+      self.client.write_registers(address=0x0E, values=data, slave=slave)
 
-   def setFEBSerialNumber(self, sn, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_string(0x0014, sn, 6)
-      elif self.param.mode == 'tcp':
-         l = list(bytes(sn.ljust(12), 'utf-8'))
-         data = struct.pack(f'>{len(l)}h', *l)
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_multiple_registers(0x0014, data)
-      
-   def setModbusAddress(self, addr, devnum=None):
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0000, addr)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0000, addr)
+   def setFEBSerialNumber(self, sn, slave=None):
+      slave = self.address if slave == None else slave
+      data = list(bytes(sn.ljust(12), 'utf-8'))
+      self.client.write_registers(address=0x14, values=data, slave=slave)
 
-   def readMonRegisters(self, devnum=None):
-      regs = []
+   def setModbusAddress(self, addr, slave=None):
+      slave = self.address if slave == None else slave
+      self.client.write_register(address=0x00, value=addr, slave=slave)
+
+   def readMonRegisters(self, slave=None):
+      slave = self.address if slave == None else slave
+
       monData = {}
-      baseAddress = 0x0000
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         regs = d.read_registers(baseAddress, 48)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         regs = self.client.read_holding_registers(baseAddress, 48)
+      rr = self.client.read_holding_registers(address=0, count=48, slave=slave)
 
-      if regs is None:
+      if rr.isError():
          return None
 
-      monData['status'] = regs[0x0006]
-      monData['Vset'] = regs[0x0026]
-      monData['V'] = ((regs[0x002B] << 16) + regs[0x002A]) / 1000
-      monData['I'] = ((regs[0x0029] << 16) + regs[0x0028]) / 1000
-      monData['T'] = self.convertTemperature(regs[0x0007])
-      monData['rateUP'] = regs[0x0023]
-      monData['rateDN'] = regs[0x0024]
-      monData['limitV'] = regs[0x0027]
-      monData['limitI'] = regs[0x0025]
-      monData['limitT'] = regs[0x002F]
-      monData['limitTRIP'] = regs[0x0022]
-      monData['threshold'] = regs[0x002D]
-      monData['alarm'] = regs[0x002E]
+      monData['status'] = rr.registers[0x0006]
+      monData['Vset'] = rr.registers[0x0026]
+      monData['V'] = ((rr.registers[0x002B] << 16) + rr.registers[0x002A]) / 1000
+      monData['I'] = ((rr.registers[0x0029] << 16) + rr.registers[0x0028]) / 1000
+      monData['T'] = self.convertTemperature(rr.registers[0x0007])
+      monData['rateUP'] = rr.registers[0x0023]
+      monData['rateDN'] = rr.registers[0x0024]
+      monData['limitV'] = rr.registers[0x0027]
+      monData['limitI'] = rr.registers[0x0025]
+      monData['limitT'] = rr.registers[0x002F]
+      monData['limitTRIP'] = rr.registers[0x0022]
+      monData['threshold'] = rr.registers[0x002D]
+      monData['alarm'] = rr.registers[0x002E]
       
       return monData
 
-   def readCalibRegisters(self, devnum=None):
-      mlsb = mmsb = qlsb = qmsb = calibt = 0
-      if self.param.mode == 'rtu': 
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         mlsb = d.read_register(0x0030)
-         mmsb = d.read_register(0x0031)
-         qlsb = d.read_register(0x0032)
-         qmsb = d.read_register(0x0033)
-         calibt = d.read_register(0x0034)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         mlsb = self.client.read_holding_registers(0x0030)[0]
-         mmlsb = self.client.read_holding_registers(0x0031)[0]
-         qlsb = self.client.read_holding_registers(0x0032)[0]
-         qmsb = self.client.read_holding_registers(0x0033)[0]
-         calibt = self.client.read_holding_registers(0x0034)[0]
+   def readCalibRegisters(self, slave=None):
+      slave = self.address if slave == None else slave
+      rr = self.client.read_holding_registers(address=0x30, count=5, slave=slave)
+      mlsb = rr.registers[0]
+      mmsb = rr.registers[1]
+      qlsb = rr.registers[2]
+      qmsb = rr.registers[3]
+      calibt = rr.registers[4]
 
       calibm = ((mmsb << 16) + mlsb)
       calibm = struct.unpack('l', struct.pack('L', calibm & 0xffffffff))[0]
@@ -512,52 +250,24 @@ class HVModbus:
 
       return (calibm, calibq, calibt)
 
-   def writeCalibSlope(self, slope, devnum=None):
+   def writeCalibSlope(self, slope, slave=None):
+      slave = self.address if slave == None else slave
       slope = int(slope * 10000)
       lsb = (slope & 0xFFFF)
       msb = (slope >> 16) & 0xFFFF
 
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0030, lsb)
-         d.write_register(0x0031, msb)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0030, lsb)
-         self.client.write_single_register(0x0031, msb)
+      self.client.write_registers(address=0x30, values=[lsb, msb], slave=slave)
 
-   def writeCalibOffset(self, offset, devnum=None):
+   def writeCalibOffset(self, offset, slave=None):
+      slave = self.address if slave == None else slave
       offset = int(offset * 10000)
       lsb = (offset & 0xFFFF)
       msb = (offset >> 16) & 0xFFFF
 
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0032, lsb)
-         d.write_register(0x0033, msb)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0032, lsb)
-         self.client.write_single_register(0x0033, msb)
-   
-   def writeCalibDiscr(self, discr, devnum=None):
+      self.client.write_registers(address=0x32, values=[lsb, msb], slave=slave)
+
+   def writeCalibDiscr(self, discr, slave=None):
+      slave = self.address if slave == None else slave
       discr = int(discr * 1.6890722)
 
-      if self.param.mode == 'rtu':
-         if devnum: d = self.devset[devnum]
-         else: d = self.dev
-         d.write_register(0x0034, discr)
-      elif self.param.mode == 'tcp':
-         if devnum is not None:
-            self.client.unit_id = devnum
-         else:
-            self.client.unit_id = self.address
-         self.client.write_single_register(0x0034, discr)
+      self.client.write_register(address=0x34, value=discr, slave=slave)

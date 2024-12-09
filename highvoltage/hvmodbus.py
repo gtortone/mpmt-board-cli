@@ -66,31 +66,31 @@ class HVModbus:
 
    def getStatus(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=6, count=1, slave=slave)
       return rr.registers[0]
 
    def getVoltage(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x2A, count=2, slave=slave)
       rr.registers.reverse()
       return (self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000)
 
    def getVoltageSet(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x26, count=1, slave=slave)
       return rr.registers[0]
 
    def setVoltageSet(self, value, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x26, value=value, slave=slave)
 
    def getCurrent(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x28, count=2, slave=slave)
       rr.registers.reverse()
       return (self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000)
@@ -102,13 +102,13 @@ class HVModbus:
 
    def getTemperature(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x7, count=1, slave=slave)
       return self.convertTemperature(rr.registers[0])
 
    def getRate(self, fmt=str, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x23, count=2, slave=slave)
       rup = rr.registers[0]
       rdn = rr.registers[1]
@@ -119,18 +119,18 @@ class HVModbus:
 
    def setRateRampup(self, value, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x23, value=value, slave=slave)
 
    def setRateRampdown(self, value, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x24, value=value, slave=slave)
 
    def getLimit(self, fmt=str, slave=None):
       slave = self.address if slave == None else slave
 
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0, count=48, slave=slave)
       lv = rr.registers[0x27]
       li = rr.registers[0x25]
@@ -144,17 +144,17 @@ class HVModbus:
 
    def setLimitVoltage(self, value, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x27, value=value, slave=slave)
 
    def setLimitCurrent(self, value, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x25, value=value, slave=slave)
 
    def setLimitTemperature(self, value, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x2F, value=value, slave=slave)
 
    def setLimitTriptime(self, value, slave=None):
@@ -163,48 +163,48 @@ class HVModbus:
 
    def setThreshold(self, value, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x2D, value=value, slave=slave)
 
    def getThreshold(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x2D, count=1, slave=slave)
       return rr.registers[0]
 
    def getAlarm(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x2E, count=1, slave=slave)
       return rr.registers[0]
 
    def getVref(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x2C, count=1, slave=slave)
       return rr.registers[0]
 
    def powerOn(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.write_coil(address=1, value=True, slave=slave)
       return (not rr.isError())
 
    def powerOff(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.write_coil(address=1, value=False, slave=slave)
       return (not rr.isError())
 
    def reset(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.write_coil(address=2, value=True, slave=slave)
       return (not rr.isError())
 
    def getInfo(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       l = self.client.read_holding_registers(address=0x02, count=1, slave=slave).registers
       fwver = struct.pack(f'>{len(l)}h', *l).decode()
       l = self.client.read_holding_registers(address=0x08, count=6, slave=slave).registers
@@ -218,31 +218,31 @@ class HVModbus:
    def setPMTSerialNumber(self, sn, slave=None):
       slave = self.address if slave == None else slave
       data = list(bytes(sn.ljust(12), 'utf-8'))
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x08, values=data, slave=slave)
 
    def setHVSerialNumber(self, sn, slave=None):
       slave = self.address if slave == None else slave
       data = list(bytes(sn.ljust(12), 'utf-8'))
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x0E, values=data, slave=slave)
 
    def setFEBSerialNumber(self, sn, slave=None):
       slave = self.address if slave == None else slave
       data = list(bytes(sn.ljust(12), 'utf-8'))
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x14, values=data, slave=slave)
 
    def setModbusAddress(self, addr, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x00, value=addr, slave=slave)
 
    def readMonRegisters(self, slave=None):
       slave = self.address if slave == None else slave
 
       monData = {}
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0, count=48, slave=slave)
 
       if rr.isError():
@@ -266,7 +266,7 @@ class HVModbus:
 
    def readCalibRegisters(self, slave=None):
       slave = self.address if slave == None else slave
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x30, count=5, slave=slave)
       mlsb = rr.registers[0]
       mmsb = rr.registers[1]
@@ -292,7 +292,7 @@ class HVModbus:
       lsb = (slope & 0xFFFF)
       msb = (slope >> 16) & 0xFFFF
 
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x30, values=[lsb, msb], slave=slave)
 
    def writeCalibOffset(self, offset, slave=None):
@@ -301,12 +301,12 @@ class HVModbus:
       lsb = (offset & 0xFFFF)
       msb = (offset >> 16) & 0xFFFF
 
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x32, values=[lsb, msb], slave=slave)
 
    def writeCalibDiscr(self, discr, slave=None):
       slave = self.address if slave == None else slave
       discr = int(discr * 1.6890722)
 
-      self.handleInterruptedRequest()
+      #self.handleInterruptedRequest()
       self.client.write_register(address=0x34, value=discr, slave=slave)

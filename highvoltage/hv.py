@@ -333,6 +333,7 @@ class HighVoltageApp(cmd2.Cmd):
       self.poutput(f'{"PMT s/n": <25}: {info[1]}')
       self.poutput(f'{"HV s/n": <25}: {info[2]}')
       self.poutput(f'{"FEB s/n": <25}: {info[3]}')
+      self.poutput(f'{"Device ID s/n": <25}: {info[4]}')
       self.poutput(f'{"Vref": <25}: {self.hv.getVref()} mV') 
       self.poutput(f'{"Calibration slope": <25}: {m}')
       self.poutput(f'{"Calibration offset": <25}: {q}')

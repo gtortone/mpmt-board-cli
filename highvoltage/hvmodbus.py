@@ -182,7 +182,7 @@ class HVModbus:
       slave = self.address if slave == None else slave
       #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0x2C, count=1, slave=slave)
-      return rr.registers[0]
+      return rr.registers[0]/10
 
    def powerOn(self, slave=None):
       slave = self.address if slave == None else slave
@@ -213,7 +213,9 @@ class HVModbus:
       hvsn = struct.pack(f'>{len(l)}h', *l).decode()
       l = self.client.read_holding_registers(address=0x14, count=6, slave=slave).registers
       febsn = struct.pack(f'>{len(l)}h', *l).decode()
-      return (fwver, pmtsn, hvsn, febsn)
+      l = self.client.read_holding_registers(address=0x04, count=2, slave=slave).registers
+      devid = (l[1] << 16) + l[0]
+      return (fwver, pmtsn, hvsn, febsn, devid)
 
    def setPMTSerialNumber(self, sn, slave=None):
       slave = self.address if slave == None else slave

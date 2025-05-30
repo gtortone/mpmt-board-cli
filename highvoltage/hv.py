@@ -3,7 +3,6 @@
 
 import argparse
 import time
-import sys
 import cmd2
 import getpass
 import numpy as np
@@ -55,6 +54,9 @@ class HighVoltageApp(cmd2.Cmd):
     columns.append(Column("", width=14, data_horiz_align=HorizontalAlignment.CENTER))
 
     st = SimpleTable(columns, divider_char=None)
+    
+    def prsuccess(self, msg) -> None:
+        self.poutput(cmd2.ansi.style(msg, fg=cmd2.ansi.Fg.LIGHT_GREEN))
 
     def checkRange(self, value, minVal, maxVal):
         if value < minVal or value > maxVal:
@@ -84,7 +86,7 @@ class HighVoltageApp(cmd2.Cmd):
     def select_address(self, address):
         if self.checkAddress(address):
             if self.hv.open(address):
-                self.psuccess(f'HV module with address {address} selected')
+                self.prsuccess(f'HV module with address {address} selected')
             else:
                 self.perror(f'HV module with address {address} not present')
 
@@ -115,19 +117,19 @@ class HighVoltageApp(cmd2.Cmd):
 
     def statusIcon(self, statusCode):
         if statusCode == 0:
-            return self.psuccess(u'\u25C9')
+            return self.prsuccess(u'\u25C9')
         elif statusCode == 1:
             return u'\u25C9'
         elif statusCode == 2:
-            return self.psuccess(u'\u22C0')
+            return self.prsuccess(u'\u22C0')
         elif statusCode == 3:
             return self.pwarning(u'\u22C1')
         elif statusCode == 4:
-            return self.psuccess(u'\u22C0')
+            return self.prsuccess(u'\u22C0')
         elif statusCode == 5:
             return self.pwarning(u'\u22C1')
         elif statusCode == 6:
-            return self.psuccess(u'\u25C9')
+            return self.prsuccess(u'\u25C9')
         else:
             return "undef"
 
@@ -151,10 +153,7 @@ class HighVoltageApp(cmd2.Cmd):
 
     def printMonitorRow(self):
         monData = self.hv.readMonRegisters()
-        if monData is None:
-            self.perror('Error reading registers')
-        else:
-            self.poutput(self.st.generate_data_row([self.statusIcon(monData['status']), self.statusString(monData['status']), monData['Vset'], f'{monData["V"]:.3f}', f'{monData["I"]:.3f}', monData['T'], f'{monData["rateUP"]}/{monData["rateDN"]}', f'{monData["limitV"]}/{monData["limitI"]}/{monData["limitT"]}/{monData["limitTRIP"]}', monData['threshold'], self.alarmString(monData['alarm'])]))
+        self.poutput(self.st.generate_data_row([self.statusIcon(monData['status']), self.statusString(monData['status']), monData['Vset'], f'{monData["V"]:.3f}', f'{monData["I"]:.3f}', monData['T'], f'{monData["rateUP"]}/{monData["rateDN"]}', f'{monData["limitV"]}/{monData["limitI"]}/{monData["limitT"]}/{monData["limitTRIP"]}', monData['threshold'], self.alarmString(monData['alarm'])]))
 
     #
     # select
@@ -336,7 +335,7 @@ class HighVoltageApp(cmd2.Cmd):
         for addr in range(1,21):
             found = self.hv.open(addr)
             if found:
-                self.psuccess(f'{addr}')
+                self.prsuccess(f'{addr}')
             else:
                 self.perror(f'{addr}')
 
@@ -518,10 +517,10 @@ class HighVoltageApp(cmd2.Cmd):
             self.printMonitorRow()
             time.sleep(1)
 
-        self.psuccess('turn on high voltage')
+        self.prsuccess('turn on high voltage')
         self.hv.powerOn()
         for v in Vexpect:
-            self.psuccess(f"Vset = {v}V")
+            self.prsuccess(f"Vset = {v}V")
             self.hv.setVoltageSet(v)
             time.sleep(1)
             self.poutput('waiting for voltage level')
@@ -577,7 +576,7 @@ class HighVoltageApp(cmd2.Cmd):
         self.hv.setVoltageSet(10)
         self.hv.powerOff()
 
-        self.psuccess('calibration DONE!')
+        self.prsuccess('calibration DONE!')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

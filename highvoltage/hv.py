@@ -489,11 +489,11 @@ class HighVoltageApp(cmd2.Cmd):
             self.perror(f'password not correct')
             return
 
-        ans = input(self.pwarning('WARNING: calibration is a time consuming task - confirm (Y/N) '))
+        ans = self.read_input("\033[93mWARNING: calibration is a time consuming task - confirm (Y/N) \033[0m")
         if str(ans).upper() != 'Y':
             return
 
-        ans = input(self.pwarning('WARNING: do you agree to erase current calibration values ? (Y/N) '))
+        ans = self.read_input("\033[93mWARNING: do you agree to erase current calibration values ? (Y/N) \033[0m")
         if str(ans).upper() != 'Y':
             return
 
@@ -566,7 +566,7 @@ class HighVoltageApp(cmd2.Cmd):
         self.poutput(cmd2.ansi.style(f'slope = {alpha[0][0]} , offset = {alpha[1][0]}', fg=cmd2.ansi.Fg.LIGHT_CYAN))
 
         # write calibration registers
-        ans = input(self.pwarning('WARNING: do you want to write new calibration values ? (Y/N) '))
+        ans = self.read_input("\033[93mWARNING: do you want to write new calibration values ? (Y/N) \033[0m")
         if str(ans).upper() == 'Y':
             self.hv.writeCalibSlope(float(alpha[0][0]))
             self.hv.writeCalibOffset(float(alpha[1][0]))

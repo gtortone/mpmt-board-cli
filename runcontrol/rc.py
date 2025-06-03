@@ -6,8 +6,11 @@ import sys
 import math
 import cmd2
 import mmap
+import json
+from cmd2 import with_category
 from cmd2.table_creator import (Column, BorderedTable, HorizontalAlignment)
 from colorama import Fore, Style
+import time
 
 class RunControlApp(cmd2.Cmd):
 
@@ -16,7 +19,6 @@ class RunControlApp(cmd2.Cmd):
         del cmd2.Cmd.do_edit
         del cmd2.Cmd.do_macro
         del cmd2.Cmd.do_run_pyscript
-        del cmd2.Cmd.do_shell
         del cmd2.Cmd.do_shortcuts
 
         self.prompt = 'RC> '
@@ -37,7 +39,7 @@ class RunControlApp(cmd2.Cmd):
         self.regs = mmap.mmap(self.fid.fileno(), 0x10000)
 
         cmd2.categorize(
-            (cmd2.Cmd.do_alias, cmd2.Cmd.do_help, cmd2.Cmd.do_history, cmd2.Cmd.do_quit, cmd2.Cmd.do_set, cmd2.Cmd.do_run_script),
+            (cmd2.Cmd.do_alias, cmd2.Cmd.do_help, cmd2.Cmd.do_history, cmd2.Cmd.do_quit, cmd2.Cmd.do_set, cmd2.Cmd.do_run_script, cmd2.Cmd.do_shell),
             "General commands"
         )
 
@@ -113,6 +115,7 @@ class RunControlApp(cmd2.Cmd):
     #
     # print channels status
     #
+    @cmd2.with_category("Monitoring commands")
     def do_status(self, _) -> None:
         """Show 19 channel status"""
         ch_en_reg = format(self.read_reg(0), '019b')
@@ -153,6 +156,7 @@ class RunControlApp(cmd2.Cmd):
     enable_parser.add_argument('value', nargs="*", type=int, help='channel to enable on (1-19)')
     enable_parser.add_argument('-a', "--all", action="store_true", help='enable all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(enable_parser)
     def do_enable(self, args) -> None:
         """Enable channel acquisition"""
@@ -172,6 +176,7 @@ class RunControlApp(cmd2.Cmd):
     disable_parser.add_argument('value', nargs="*", type=int, help='channel to disable (1-19)')
     disable_parser.add_argument('-a', "--all", action="store_true", help='disable all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(enable_parser)
     def do_disable(self, args) -> None:
         """Disable channel acquisition"""
@@ -191,6 +196,7 @@ class RunControlApp(cmd2.Cmd):
     on_parser.add_argument('value', nargs="*", type=int, help='turn on channels (1-19)')
     on_parser.add_argument('-a', "--all", action="store_true", help='turn on all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(on_parser)
     def do_on(self, args) -> None:
         """Turn on channels"""
@@ -210,6 +216,7 @@ class RunControlApp(cmd2.Cmd):
     off_parser.add_argument('value', nargs="*", type=int, help='turn off channels (1-19)')
     off_parser.add_argument('-a', "--all", action="store_true", help='turn off all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(off_parser)
     def do_off(self, args) -> None:
         """Turn off channels"""
@@ -225,17 +232,20 @@ class RunControlApp(cmd2.Cmd):
     #
     # clock register
     #
+    @cmd2.with_category("Monitoring commands")
     def do_clock(self, _) -> None:
         """Check clock registers"""
         clock_reg = self.read_reg(3)
         self.poutput(f"PLL: {'locked' if (clock_reg&0x2) > 0 else 'free running'} and {'unstable' if (clock_reg&0x8000) > 0 else 'stable'}")
         self.poutput(f"Cable 1: {'OK' if (clock_reg&0x80) > 0 else 'not OK'}, {'Lost' if (clock_reg&0x40) > 0 else 'not Lost'}, {'Found' if (clock_reg&0x20) > 0 else 'not Found'}")
         self.poutput(f"Cable 2: {'OK' if (clock_reg&0x10) > 0 else 'not OK'}, {'Lost' if (clock_reg&0x8) > 0 else 'not Lost'}, {'Found' if (clock_reg&0x4) > 0 else 'not Found'}")
-        self.poutput(f"Sources: {'Quartz' if (clock_reg&0x200) > 0 else 'Cable'} - cable {'2' if (clock_reg&0x100) > 0 else '1'}")
+        self.poutput(f"Sources: {'Quartz' if (clock_reg&0x200) > 0 else 'Cable'} (set to {'Quartz' if (self.read_reg(4)&0x400) > 0 else 'Cable'})"
+                     f" - cable {'2' if (clock_reg&0x100) > 0 else '1'} (set to {'2' if (self.read_reg(4)&0x800) > 0 else '1'})")
 
     #
     # Tr32 register
     #
+    @cmd2.with_category("Monitoring commands")
     def do_tr(self, _) -> None:
         """Check Tr32 registers"""
         clock_reg = self.read_reg(3)
@@ -254,6 +264,7 @@ class RunControlApp(cmd2.Cmd):
     clk_cable_parser = clk_subparsers.add_parser('cable', help='cable source')
     clk_cable_parser.add_argument('value', type=int, help='1 or 2')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(clk_parser)
     def do_clk_source(self, args) -> None:
         """Change clk source"""
@@ -279,32 +290,29 @@ class RunControlApp(cmd2.Cmd):
     #
     # enable tr32 channel
     #
-    tr32ch_parser = argparse.ArgumentParser()
-    tr32ch_parser.add_argument('value', type=str, help='enable Tr32 channel (E/D)')
-
-    @cmd2.with_argparser(tr32ch_parser)
-    def do_enable_Tr32(self, args) -> None:
-        """Enable tr32 channel"""
-        if args.value.upper() == 'D':
+    @cmd2.with_category("Slow control commands")
+    def do_enable_Tr32(self, _) -> None:
+        """Enable Tr32 channel"""
+        state = self.read_reg(4) & 0x4000
+        if state > 0:
             self.write_reg(4, self.read_reg(4) & 0x1BFFF)
             self.prsuccess("Tr32 channel disabled")
-        elif args.value.upper() == 'E':
+        else:
             self.write_reg(4, self.read_reg(4) | 0x4000)
             self.prsuccess("Tr32 channel enabled")
-        else:
-            self.perror(f'Invalid value {args.value}')
 
     #
     # ADC calibration
     #
+    @cmd2.with_category("Slow control commands")
     def do_calibration(self, _) -> None:
-        """Enable tr32 channel"""
-        answer = input("Enable calibration? (y/n) ")
+        """Do a calibration measure for all the 19 ADCs"""
+        answer = input("Enable calibration? (y/N) ")
         if answer.upper() == 'Y':
             self.write_reg(4, self.read_reg(4) | 0x10000)
             self.write_reg(4, self.read_reg(4) & 0xFFFF)
             self.prsuccess("Calibration performed in the next event")
-        elif answer.upper() == 'N':
+        elif answer.upper() == 'N' or answer == '':
             self.perror("Calibration not performed")
         else:
             self.perror(f'Invalid response')
@@ -315,6 +323,7 @@ class RunControlApp(cmd2.Cmd):
     pulser_parser = argparse.ArgumentParser()
     pulser_parser.add_argument('value', nargs='*', help='pulser value (Hz), use sub to add subhits')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(pulser_parser)
     def do_pulser(self, args) -> None:
         """Control pulser"""
@@ -348,6 +357,7 @@ class RunControlApp(cmd2.Cmd):
 
     rst_fifo_parser = rst_subparsers.add_parser('fifo', help='toggle fifo reset')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(rst_parser)
     def do_reset(self, args) -> None:
         """Toggle multichannel or AXI-FIFO reset"""
@@ -356,17 +366,17 @@ class RunControlApp(cmd2.Cmd):
             self.perror("Invalid subcommand")
         elif args.subcommand == 'multi':
             if 0x200 < state:
-                self.write_reg(4, state & 0x17FFF)
+                self.write_reg(4, self.read_reg(4) & 0x17FFF)
                 self.prsuccess("Multichannel free")
             else:
-                self.write_reg(4, state | 0x08000)
+                self.write_reg(4, self.read_reg(4) | 0x08000)
                 self.prsuccess("Multichannel reset")
         elif args.subcommand == 'fifo':
             if state == 0x200 or state == 0x8200:
-                self.write_reg(4, state & 0x1FDFF)
+                self.write_reg(4, self.read_reg(4) & 0x1FDFF)
                 self.prsuccess("FIFO free")
             else:
-                self.write_reg(4, state | 0x00200)
+                self.write_reg(4, self.read_reg(4) | 0x00200)
                 self.prsuccess("FIFO reset")
 
     #
@@ -375,6 +385,7 @@ class RunControlApp(cmd2.Cmd):
     timeout_parser = argparse.ArgumentParser()
     timeout_parser.add_argument('value', type=int, help='shifter maximum timeout (unit=8ns)')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(timeout_parser)
     def do_timeout(self, args) -> None:
         """Set data shifter timout"""
@@ -391,6 +402,7 @@ class RunControlApp(cmd2.Cmd):
     ttp_parser.add_argument('channel', type=int, nargs='*', help='channel (1-19)')
     ttp_parser.add_argument('-a', "--all", action="store_true", help='set for all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(ttp_parser)
     def do_timetopeak(self, args) -> None:
         """Set time to peak for each channel"""
@@ -416,6 +428,7 @@ class RunControlApp(cmd2.Cmd):
     delay_parser.add_argument('channel', type=int, nargs='*', help='channel (1-19)')
     delay_parser.add_argument('-a', "--all", action="store_true", help='set for all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(delay_parser)
     def do_delay(self, args) -> None:
         """Set measures delay for each channel"""
@@ -441,6 +454,7 @@ class RunControlApp(cmd2.Cmd):
     window_parser = argparse.ArgumentParser()
     window_parser.add_argument('value', type=int, help='external trigger window (max=4294967295, unit=8ns), 0=OFF')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(window_parser)
     def do_window(self, args) -> None:
         """Set trigger window width"""
@@ -456,6 +470,7 @@ class RunControlApp(cmd2.Cmd):
     rate_parser.add_argument('channel', type=int, nargs='*', help='channel (1-19)')
     rate_parser.add_argument('-a', "--all", action="store_true", help='set for all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(rate_parser)
     def do_threshold(self, args) -> None:
         """Set rate threshold for each channel"""
@@ -477,6 +492,7 @@ class RunControlApp(cmd2.Cmd):
     #
     # house-keeping
     #
+    @cmd2.with_category("Monitoring commands")
     def do_hk(self, _) -> None:
         """Show house-keeping registers"""
         self.poutput(f"Temperature: {(self.read_reg(56) >> 12)/100}°C")
@@ -487,6 +503,7 @@ class RunControlApp(cmd2.Cmd):
     #
     # FIFO regs
     #
+    @cmd2.with_category("Monitoring commands")
     def do_fifo(self, _) -> None:
         """Show FIFO registers"""
         self.poutput(f"Data in FIFO: {self.read_reg(43)}, {'FULL' if self.read_reg(3)&0x1 > 0 else 'not FULL'}")
@@ -498,6 +515,7 @@ class RunControlApp(cmd2.Cmd):
     enable_trigger_parser.add_argument('value', nargs="*", type=int, help='channel to enable trigger (1-19)')
     enable_trigger_parser.add_argument('-a', "--all", action="store_true", help='enable trigger to all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(enable_trigger_parser)
     def do_enable_trigger(self, args) -> None:
         """Enable channel trigger"""
@@ -517,6 +535,7 @@ class RunControlApp(cmd2.Cmd):
     disable_trigger_parser.add_argument('value', nargs="*", type=int, help='channel to disable trigger (1-19)')
     disable_trigger_parser.add_argument('-a', "--all", action="store_true", help='disable trigger to all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(disable_trigger_parser)
     def do_disable_trigger(self, args) -> None:
         """Disable channel acquisition"""
@@ -536,6 +555,7 @@ class RunControlApp(cmd2.Cmd):
     enable_pulser_parser.add_argument('value', nargs="*", type=int, help='channel to enable pulser (1-19)')
     enable_pulser_parser.add_argument('-a', "--all", action="store_true", help='enable pulser to all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(enable_pulser_parser)
     def do_enable_pulser(self, args) -> None:
         """Enable channel pulser"""
@@ -555,6 +575,7 @@ class RunControlApp(cmd2.Cmd):
     disable_pulser_parser.add_argument('value', nargs="*", type=int, help='channel to disable pulser (1-19)')
     disable_pulser_parser.add_argument('-a', "--all", action="store_true", help='disable pulser to all channels')
 
+    @cmd2.with_category("Slow control commands")
     @cmd2.with_argparser(disable_pulser_parser)
     def do_disable_pulser(self, args) -> None:
         """Disable channel acquisition"""
@@ -570,13 +591,59 @@ class RunControlApp(cmd2.Cmd):
     #
     # printall
     #
+    @cmd2.with_category("Monitoring commands")
     def do_printall(self, _) -> None:
         """Print all the registers"""
         for row in range(8):
-            self.poutput(f"Register{(row*8):02}: {self.read_reg(row*8):08x}   Register{(row*8)+1:02}: {self.read_reg((row*8)+1):08x}   "
-                         f"Register{(row*8)+2:02}: {self.read_reg((row*8)+2):08x}   Register{(row*8)+3:02}: {self.read_reg((row*8)+3):08x}   "
-                         f"Register{(row*8)+4:02}: {self.read_reg((row*8)+4):08x}   Register{(row*8)+5:02}: {self.read_reg((row*8)+5):08x}   "
-                         f"Register{(row*8)+6:02}: {self.read_reg((row*8)+6):08x}   Register{(row*8)+7:02}: {self.read_reg((row*8)+7):08x}")
+            self.poutput(f"Register{(row*8):02}: {self.read_reg(row*8):08x}  Register{(row*8)+1:02}: {self.read_reg((row*8)+1):08x}  "
+                         f"Register{(row*8)+2:02}: {self.read_reg((row*8)+2):08x}  Register{(row*8)+3:02}: {self.read_reg((row*8)+3):08x}  "
+                         f"Register{(row*8)+4:02}: {self.read_reg((row*8)+4):08x}  Register{(row*8)+5:02}: {self.read_reg((row*8)+5):08x}  "
+                         f"Register{(row*8)+6:02}: {self.read_reg((row*8)+6):08x}  Register{(row*8)+7:02}: {self.read_reg((row*8)+7):08x}")
+
+    #
+    # monitoring
+    #
+    mon_parser = argparse.ArgumentParser()
+    mon_parser.add_argument('seconds',  type=int, default=1, nargs='?', help='number of seconds')
+
+    @cmd2.with_argparser(mon_parser)
+    @cmd2.with_category("Monitoring commands")
+    def do_mon(self, args: argparse.Namespace) -> None:
+        """Monitor monitored values"""
+        for i in range(0, args.seconds):
+            ratemeters = []
+            for j in range(8, 27):
+                ratemeters.append(self.read_reg(j))
+            deadtime = self.read_reg(27)
+            fifodata = self.read_reg(43)
+            temp = (self.read_reg(56) >> 12)/100
+            hum = (self.read_reg(56) & 0xFFF)/100
+            if i % 10 == 0:
+                self.prsuccess(f"-----------------------------          Temperature: {temp}°C   Relative humidity: {hum}%          -----------------------------")
+            self.pwarning("Rates (Hz):")
+            self.poutput("-------------------------------------------------------------------------------------------------------------------------------")
+            self.poutput(f"CH1:  {ratemeters[0]:08},  CH2: {ratemeters[1]:08},  CH3: {ratemeters[2]:08},  CH4: {ratemeters[3]:08},  CH5: {ratemeters[4]:08},  CH6: {ratemeters[5]:08},  CH7: {ratemeters[6]:08},  CH8: {ratemeters[7]:08},")
+            self.poutput(f"CH9:  {ratemeters[8]:08}, CH10: {ratemeters[9]:08}, CH11: {ratemeters[10]:08}, CH12: {ratemeters[11]:08}, CH13: {ratemeters[12]:08}, CH14: {ratemeters[13]:08}, CH15: {ratemeters[14]:08}, CH16: {ratemeters[15]:08},")
+            self.poutput(f"CH17: {ratemeters[16]:08}, CH18: {ratemeters[17]:08}, CH19: {ratemeters[18]:08}  --  Deadtime: {deadtime:08}  --  FIFO: {fifodata} words ({'FULL' if self.read_reg(3)&0x1 > 0 else 'not FULL'})")
+            self.poutput("-------------------------------------------------------------------------------------------------------------------------------")
+            time.sleep(1)
+
+    #
+    # default
+    #
+    @with_category("Slow control commands")
+    def do_default(self, _) -> None:
+        """Set all the registers to their default values"""
+        ans = self.read_input("\033[93mWarning: do you want to reset all the regsters to their default values? (Y/n) \033[0m")
+        if ans.upper() == "Y" or ans == "":
+            with open("defaults.json") as f:
+                def_reg = json.load(f)
+            for add in def_reg.keys():
+                self.poutput(f"Reg{add}: {def_reg[add]} (0X{def_reg[add]:08x})")
+                self.write_reg(int(add), def_reg[add])
+            self.prsuccess("All registers set to default values")
+        else:
+            self.prsuccess("Nothing changed")
 
 
 if __name__ == '__main__':

@@ -7,6 +7,8 @@ import math
 import cmd2
 import mmap
 import json
+
+import cmd2.ansi
 from cmd2 import with_category
 from cmd2.table_creator import (Column, BorderedTable, HorizontalAlignment)
 from colorama import Fore, Style
@@ -44,7 +46,7 @@ class RunControlApp(cmd2.Cmd):
         )
 
     def prsuccess(self, msg) -> None:
-        self.poutput(cmd2.ansi.style(msg, fg=cmd2.ansi.Fg.LIGHT_BLUE))
+        self.poutput(cmd2.ansi.style(msg, fg=cmd2.ansi.Fg.LIGHT_CYAN))
 
     def checkRange(self, value, minVal, maxVal) -> bool:
         if value < minVal or value > maxVal:
@@ -234,6 +236,9 @@ class RunControlApp(cmd2.Cmd):
     #
     @cmd2.with_category("Monitoring commands")
     def do_clock(self, _) -> None:
+        self.print_clockreg()
+
+    def print_clockreg(self) -> None:
         """Check clock registers"""
         clock_reg = self.read_reg(3)
         self.poutput(f"PLL: {'locked' if (clock_reg&0x2) > 0 else 'free running'} and {'unstable' if (clock_reg&0x8000) > 0 else 'stable'}")
@@ -247,10 +252,13 @@ class RunControlApp(cmd2.Cmd):
     #
     @cmd2.with_category("Monitoring commands")
     def do_tr(self, _) -> None:
+        self.print_trreg()
+
+    def print_trreg(self) -> None:
         """Check Tr32 registers"""
         clock_reg = self.read_reg(3)
         self.poutput(f"Tr32: {'not received' if (clock_reg&0x800) > 0 else 'received'} and {'not aligned' if (clock_reg&0x400) > 0 else 'aligned'} - counted: {self.read_reg(45)}")
-        self.poutput(f"TagT: {'not received' if (clock_reg&0x2000) > 0 else 'received'} and {'not aligned' if (clock_reg&0x1000) > 0 else 'aligned'} ({'parity not ok' if (clock_reg&0x4000) > 0 else 'parity ok'})")
+        self.poutput(f"TagT: {'not received' if (clock_reg&0x2000) > 0 else 'received'} and {'not aligned' if (clock_reg&0x1000) > 0 else 'aligned'} ({'parity not ok' if (clock_reg&0x4000) > 0 else 'parity ok'})\n")
 
     #
     # change clk source
@@ -619,12 +627,16 @@ class RunControlApp(cmd2.Cmd):
             temp = (self.read_reg(56) >> 12)/100
             hum = (self.read_reg(56) & 0xFFF)/100
             if i % 10 == 0:
-                self.prsuccess(f"-----------------------------          Temperature: {temp}°C   Relative humidity: {hum}%          -----------------------------")
+                self.poutput(cmd2.ansi.style(f"Temperature: {temp}°C   Relative humidity: {hum}%", fg=cmd2.ansi.Fg.LIGHT_CYAN))
+                self.poutput("-------------------------------------------------------------------------------------------------------------------------------")
             self.pwarning("Rates (Hz):")
-            self.poutput("-------------------------------------------------------------------------------------------------------------------------------")
             self.poutput(f"CH1:  {ratemeters[0]:08},  CH2: {ratemeters[1]:08},  CH3: {ratemeters[2]:08},  CH4: {ratemeters[3]:08},  CH5: {ratemeters[4]:08},  CH6: {ratemeters[5]:08},  CH7: {ratemeters[6]:08},  CH8: {ratemeters[7]:08},")
             self.poutput(f"CH9:  {ratemeters[8]:08}, CH10: {ratemeters[9]:08}, CH11: {ratemeters[10]:08}, CH12: {ratemeters[11]:08}, CH13: {ratemeters[12]:08}, CH14: {ratemeters[13]:08}, CH15: {ratemeters[14]:08}, CH16: {ratemeters[15]:08},")
-            self.poutput(f"CH17: {ratemeters[16]:08}, CH18: {ratemeters[17]:08}, CH19: {ratemeters[18]:08}  --  Deadtime: {deadtime:08}  --  FIFO: {fifodata} words ({'FULL' if self.read_reg(3)&0x1 > 0 else 'not FULL'})")
+            self.poutput(f"CH17: {ratemeters[16]:08}, CH18: {ratemeters[17]:08}, CH19: {ratemeters[18]:08}  --  Deadtime: {deadtime:08}  --  FIFO: {fifodata} words ({'FULL' if self.read_reg(3)&0x1 > 0 else 'not FULL'}) \n")
+            self.pwarning("Tr32 status:")
+            self.print_trreg()
+            self.pwarning("Clock status:")
+            self.print_clockreg()
             self.poutput("-------------------------------------------------------------------------------------------------------------------------------")
             time.sleep(1)
 

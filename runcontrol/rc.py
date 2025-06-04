@@ -7,7 +7,7 @@ import math
 import cmd2
 import mmap
 import json
-
+import os
 import cmd2.ansi
 from cmd2 import with_category
 from cmd2.table_creator import (Column, BorderedTable, HorizontalAlignment)
@@ -648,7 +648,7 @@ class RunControlApp(cmd2.Cmd):
         """Set all the registers to their default values"""
         ans = self.read_input("\033[93mWarning: do you want to reset all the regsters to their default values? (Y/n) \033[0m")
         if ans.upper() == "Y" or ans == "":
-            with open("defaults.json") as f:
+            with open(f"{os.path.dirname(os.path.abspath(__file__))}/defaults.json") as f:
                 def_reg = json.load(f)
             for add in def_reg.keys():
                 self.poutput(f"Reg{add}: {def_reg[add]} (0X{def_reg[add]:08x})")

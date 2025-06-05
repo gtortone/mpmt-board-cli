@@ -236,10 +236,10 @@ class RunControlApp(cmd2.Cmd):
     #
     @cmd2.with_category("Monitoring commands")
     def do_clock(self, _) -> None:
+        """Check clock registers"""
         self.print_clockreg()
 
     def print_clockreg(self) -> None:
-        """Check clock registers"""
         clock_reg = self.read_reg(3)
         self.poutput(f"PLL: {'locked' if (clock_reg&0x2) > 0 else 'free running'} and {'unstable' if (clock_reg&0x8000) > 0 else 'stable'}")
         self.poutput(f"Cable 1: {'OK' if (clock_reg&0x80) > 0 else 'not OK'}, {'Lost' if (clock_reg&0x40) > 0 else 'not Lost'}, {'Found' if (clock_reg&0x20) > 0 else 'not Found'}")
@@ -252,10 +252,10 @@ class RunControlApp(cmd2.Cmd):
     #
     @cmd2.with_category("Monitoring commands")
     def do_tr(self, _) -> None:
+        """Check Tr32 registers"""
         self.print_trreg()
 
     def print_trreg(self) -> None:
-        """Check Tr32 registers"""
         clock_reg = self.read_reg(3)
         self.poutput(f"Tr32: {'not received' if (clock_reg&0x800) > 0 else 'received'} and {'not aligned' if (clock_reg&0x400) > 0 else 'aligned'} - counted: {self.read_reg(45)}")
         self.poutput(f"TagT: {'not received' if (clock_reg&0x2000) > 0 else 'received'} and {'not aligned' if (clock_reg&0x1000) > 0 else 'aligned'} ({'parity not ok' if (clock_reg&0x4000) > 0 else 'parity ok'})\n")

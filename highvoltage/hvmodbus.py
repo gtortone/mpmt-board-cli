@@ -1,13 +1,10 @@
 import struct
-from enum import Enum
 from sys import exit
 
 import pymodbus.client as ModbusClient
-from pymodbus.utilities import ModbusTransactionState
 from pymodbus import (
     FramerType,
     ModbusException,
-    pymodbus_apply_logging_config,
 )
 
 class HVModbus:
@@ -20,7 +17,7 @@ class HVModbus:
 
       if self.param.mode == 'tcp':
          self.client = ModbusClient.ModbusTcpClient(self.param.host, port=502, framer=FramerType.SOCKET)
-         if self.client.connect() == False:
+         if not self.client.connect():
             print(f'E: host not reachable or mbusd not running ({self.param.host})')
             exit(1) 
       elif self.param.mode == 'rtu':
@@ -33,15 +30,11 @@ class HVModbus:
             stopbits=1,
             timeout=0.5
          )
-         if self.client.connect() == False:
+         if not self.client.connect():
             print(f'E: port not available ({self.param.port})')
             exit(1) 
 
    def open(self, addr):
-      rr = None
-
-      self.handleInterruptedRequest()
-
       try:
          rr = self.client.read_holding_registers(address=0, count=1, slave=addr)
       except ModbusException as e:
@@ -53,158 +46,128 @@ class HVModbus:
 
       self.address = addr
       return True
-
-   def handleInterruptedRequest(self):
-      if self.client.state != ModbusTransactionState.TRANSACTION_COMPLETE:
-         self.client.close()
       
    def isConnected(self):
-      return (self.address is not None)
+      return self.address is not None
 
    def getAddress(self):
       return self.address
 
    def getStatus(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=6, count=1, slave=slave)
       return rr.registers[0]
 
    def getVoltage(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x2A, count=2, slave=slave)
       rr.registers.reverse()
-      return (self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000)
+      return self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000
 
    def getVoltageSet(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x26, count=1, slave=slave)
       return rr.registers[0]
 
    def setVoltageSet(self, value, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x26, value=value, slave=slave)
 
    def getCurrent(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x28, count=2, slave=slave)
       rr.registers.reverse()
-      return (self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000)
-
-   def convertTemperature(self, value):
-      q = (value & 0xFF) / 1000
-      i = (value >> 8) & 0xFF
-      return round(q+i, 1)
+      return self.client.convert_from_registers(rr.registers, data_type=self.client.DATATYPE.INT32) / 1000
 
    def getTemperature(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x7, count=1, slave=slave)
       return self.convertTemperature(rr.registers[0])
 
    def getRate(self, fmt=str, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x23, count=2, slave=slave)
       rup = rr.registers[0]
       rdn = rr.registers[1]
-      if (fmt == str):
+      if fmt == str:
          return f'{rup}/{rdn}' 
       else:
-         return (rup, rdn)
+         return rup, rdn
 
    def setRateRampup(self, value, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x23, value=value, slave=slave)
 
    def setRateRampdown(self, value, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x24, value=value, slave=slave)
 
    def getLimit(self, fmt=str, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
 
-      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0, count=48, slave=slave)
       lv = rr.registers[0x27]
       li = rr.registers[0x25]
       lt = rr.registers[0x2F]
       ltt = rr.registers[0x22]
 
-      if (fmt == str):
+      if fmt == str:
          return f'{lv}/{li}/{lt}/{ltt}'
       else:
-         return (lv, li, lt, ltt)
+         return lv, li, lt, ltt
 
    def setLimitVoltage(self, value, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x27, value=value, slave=slave)
 
    def setLimitCurrent(self, value, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x25, value=value, slave=slave)
 
    def setLimitTemperature(self, value, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x2F, value=value, slave=slave)
 
    def setLimitTriptime(self, value, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x22, value=value, slave=slave)
 
    def setThreshold(self, value, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x2D, value=value, slave=slave)
 
    def getThreshold(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x2D, count=1, slave=slave)
       return rr.registers[0]
 
    def getAlarm(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x2E, count=1, slave=slave)
       return rr.registers[0]
 
    def getVref(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x2C, count=1, slave=slave)
       return rr.registers[0]/10
 
    def powerOn(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.write_coil(address=1, value=True, slave=slave)
-      return (not rr.isError())
+      return not rr.isError()
 
    def powerOff(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.write_coil(address=1, value=False, slave=slave)
-      return (not rr.isError())
+      return not rr.isError()
 
    def reset(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.write_coil(address=2, value=True, slave=slave)
-      return (not rr.isError())
+      return not rr.isError()
 
    def getInfo(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       l = self.client.read_holding_registers(address=0x02, count=1, slave=slave).registers
       fwver = struct.pack(f'>{len(l)}h', *l).decode()
       l = self.client.read_holding_registers(address=0x08, count=6, slave=slave).registers
@@ -215,36 +178,31 @@ class HVModbus:
       febsn = struct.pack(f'>{len(l)}h', *l).decode()
       l = self.client.read_holding_registers(address=0x04, count=2, slave=slave).registers
       devid = (l[1] << 16) + l[0]
-      return (fwver, pmtsn, hvsn, febsn, devid)
+      return fwver, pmtsn, hvsn, febsn, devid
 
    def setPMTSerialNumber(self, sn, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
       data = list(bytes(sn.ljust(12), 'utf-8'))
-      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x08, values=data, slave=slave)
 
    def setHVSerialNumber(self, sn, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
       data = list(bytes(sn.ljust(12), 'utf-8'))
-      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x0E, values=data, slave=slave)
 
    def setFEBSerialNumber(self, sn, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
       data = list(bytes(sn.ljust(12), 'utf-8'))
-      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x14, values=data, slave=slave)
 
    def setModbusAddress(self, addr, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       self.client.write_register(address=0x00, value=addr, slave=slave)
 
    def readMonRegisters(self, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
 
       monData = {}
-      #self.handleInterruptedRequest()
       rr = self.client.read_holding_registers(address=0, count=48, slave=slave)
 
       if rr.isError():
@@ -266,9 +224,14 @@ class HVModbus:
       
       return monData
 
+   @staticmethod
+   def convertTemperature(value):
+       q = (value & 0xFF) / 1000
+       i = (value >> 8) & 0xFF
+       return round(q + i, 1)
+
    def readCalibRegisters(self, slave=None):
-      slave = self.address if slave == None else slave
-      #self.handleInterruptedRequest()
+      slave = self.address if slave is None else slave
       rr = self.client.read_holding_registers(address=0x30, count=5, slave=slave)
       mlsb = rr.registers[0]
       mmsb = rr.registers[1]
@@ -286,29 +249,23 @@ class HVModbus:
 
       calibt = calibt / 1.6890722
 
-      return (calibm, calibq, calibt)
+      return calibm, calibq, calibt
 
    def writeCalibSlope(self, slope, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
       slope = int(slope * 10000)
       lsb = (slope & 0xFFFF)
       msb = (slope >> 16) & 0xFFFF
-
-      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x30, values=[lsb, msb], slave=slave)
 
    def writeCalibOffset(self, offset, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
       offset = int(offset * 10000)
       lsb = (offset & 0xFFFF)
       msb = (offset >> 16) & 0xFFFF
-
-      #self.handleInterruptedRequest()
       self.client.write_registers(address=0x32, values=[lsb, msb], slave=slave)
 
    def writeCalibDiscr(self, discr, slave=None):
-      slave = self.address if slave == None else slave
+      slave = self.address if slave is None else slave
       discr = int(discr * 1.6890722)
-
-      #self.handleInterruptedRequest()
       self.client.write_register(address=0x34, value=discr, slave=slave)

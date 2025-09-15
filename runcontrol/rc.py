@@ -24,7 +24,7 @@ class RunControlApp(cmd2.Cmd):
         del cmd2.Cmd.do_shortcuts
 
         self.prompt = 'RC> '
-        self.prompt = cmd2.ansi.style(self.prompt, fg=cmd2.ansi.Fg.LIGHT_GREEN)
+        self.prompt = cmd2.ansi.style(self.prompt, fg=cmd2.ansi.fg.bright_green)
 
         self.columns = []
         self.columns.append(Column("31...24", width=10, header_horiz_align=HorizontalAlignment.CENTER, data_horiz_align=HorizontalAlignment.CENTER))
@@ -46,7 +46,7 @@ class RunControlApp(cmd2.Cmd):
         )
 
     def prsuccess(self, msg) -> None:
-        self.poutput(cmd2.ansi.style(msg, fg=cmd2.ansi.Fg.LIGHT_CYAN))
+        self.poutput(cmd2.ansi.style(msg, fg=cmd2.ansi.fg.bright_cyan))
 
     def checkRange(self, value, minVal, maxVal) -> bool:
         if value < minVal or value > maxVal:
@@ -627,7 +627,7 @@ class RunControlApp(cmd2.Cmd):
             temp = (self.read_reg(56) >> 12)/100
             hum = (self.read_reg(56) & 0xFFF)/100
             if i % 10 == 0:
-                self.poutput(cmd2.ansi.style(f"Temperature: {temp}°C   Relative humidity: {hum}%", fg=cmd2.ansi.Fg.LIGHT_CYAN))
+                self.poutput(cmd2.ansi.style(f"Temperature: {temp}°C   Relative humidity: {hum}%", fg=cmd2.ansi.fg.bright_cyan))
                 self.poutput("-------------------------------------------------------------------------------------------------------------------------------")
             self.pwarning("Rates (Hz):")
             self.poutput(f"CH1:  {ratemeters[0]:08},  CH2: {ratemeters[1]:08},  CH3: {ratemeters[2]:08},  CH4: {ratemeters[3]:08},  CH5: {ratemeters[4]:08},  CH6: {ratemeters[5]:08},  CH7: {ratemeters[6]:08},  CH8: {ratemeters[7]:08},")

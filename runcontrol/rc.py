@@ -125,7 +125,7 @@ class RunControlApp(cmd2.Cmd):
         ratemeters = []
         for i in range(8, 27):
             ratemeters.append(self.read_reg(i))
-        deadtime = self.read_reg(27)
+        deadtime = round((65535 - self.read_reg(27))/65535*100)
         def ch(channel):
             on = Fore.GREEN + f"{channel+1:02}" if pow_en_reg[18-channel] == '1' else Fore.RED + f"{channel+1:02}"
             enabled = Fore.GREEN + "•" if ch_en_reg[18-channel] == '1' else Fore.RED + "•"
@@ -149,7 +149,7 @@ class RunControlApp(cmd2.Cmd):
         self.poutput("Number color: on/off - Dot color: enabled/disabled - Right: ratemeters")
         for status, rate in zip(status_scheme, ratemeters_scheme):
             print(status, " ", rate)
-        self.poutput(f"Deadtime: {deadtime}")
+        self.poutput(f"Deadtime: {deadtime}%")
 
     #
     # enable channel acquisition
@@ -192,7 +192,7 @@ class RunControlApp(cmd2.Cmd):
                     self.prsuccess(f"Channel {channel} disabled")
 
     #
-    # tun on channels
+    # turn on channels
     #
     on_parser = argparse.ArgumentParser()
     on_parser.add_argument('value', nargs="*", type=int, help='turn on channels (1-19)')
@@ -209,7 +209,7 @@ class RunControlApp(cmd2.Cmd):
             for channel in args.value:
                 if self.checkRange(channel, 1, 19):
                     self.write_reg(1, self.read_reg(1) | (1 << (channel-1)))
-                    self.prsuccess(f"Channel {channel} enabled")
+                    self.prsuccess(f"Channel {channel} turned ON")
 
     #
     # turn off channels
@@ -229,7 +229,31 @@ class RunControlApp(cmd2.Cmd):
             for channel in args.value:
                 if self.checkRange(channel, 1, 19):
                     self.write_reg(1, self.read_reg(1) & ~(1 << (channel-1)))
-                    self.prsuccess(f"Channel {channel} disabled")
+                    self.prsuccess(f"Channel {channel} turned OFF")
+
+    #
+    # clear channels
+    #
+    clear_parser = argparse.ArgumentParser()
+    clear_parser.add_argument('value', nargs="*", type=int, help='clear channels (1-19)')
+    clear_parser.add_argument('-a', "--all", action="store_true", help='clear all channels')
+
+    @cmd2.with_category("Slow control commands")
+    @cmd2.with_argparser(clear_parser)
+    def do_clear(self, args) -> None:
+        """Clear channels"""
+        if args.all:
+            self.write_reg(5, 0x7FFFF)
+            time.sleep(0.5)
+            self.write_reg(5, 0)
+            self.prsuccess("All channels cleared")
+        else:
+            for channel in args.value:
+                if self.checkRange(channel, 1, 19):
+                    self.write_reg(5, 1 << (channel-1))
+                    time.sleep(0.5)
+                    self.write_reg(5, 0)
+                    self.prsuccess(f"Channel {channel} cleared")
 
     #
     # clock register
@@ -356,12 +380,12 @@ class RunControlApp(cmd2.Cmd):
                 self.perror("Invalid pulser value")
 
     #
-    # reset multichannel / FIFO
+    # reset FIFO / DMA
     #
     rst_parser = argparse.ArgumentParser()
     rst_subparsers = rst_parser.add_subparsers(dest='subcommand')
 
-    rst_multi_parser = rst_subparsers.add_parser('multi', help='toggle multichannel reset')
+    rst_multi_parser = rst_subparsers.add_parser('DMA', help='toggle DMA reset')
 
     rst_fifo_parser = rst_subparsers.add_parser('fifo', help='toggle fifo reset')
 
@@ -369,18 +393,18 @@ class RunControlApp(cmd2.Cmd):
     @cmd2.with_argparser(rst_parser)
     def do_reset(self, args) -> None:
         """Toggle multichannel or AXI-FIFO reset"""
-        state = self.read_reg(4) & 0x08200
+        state = self.read_reg(4) & 0x01200
         if args.subcommand is None:
             self.perror("Invalid subcommand")
-        elif args.subcommand == 'multi':
-            if 0x200 < state:
-                self.write_reg(4, self.read_reg(4) & 0x17FFF)
-                self.prsuccess("Multichannel free")
+        elif args.subcommand == 'DMA':
+            if 0x1000 <= state:
+                self.write_reg(4, self.read_reg(4) & 0x1EFFF)
+                self.prsuccess("DMA reset")
             else:
-                self.write_reg(4, self.read_reg(4) | 0x08000)
-                self.prsuccess("Multichannel reset")
+                self.write_reg(4, self.read_reg(4) | 0x01000)
+                self.prsuccess("DMA free")
         elif args.subcommand == 'fifo':
-            if state == 0x200 or state == 0x8200:
+            if state == 0x1200 or state == 0x200:
                 self.write_reg(4, self.read_reg(4) & 0x1FDFF)
                 self.prsuccess("FIFO free")
             else:
@@ -514,7 +538,7 @@ class RunControlApp(cmd2.Cmd):
     @cmd2.with_category("Monitoring commands")
     def do_fifo(self, _) -> None:
         """Show FIFO registers"""
-        self.poutput(f"Data in FIFO: {self.read_reg(43)}, {'FULL' if self.read_reg(3)&0x1 > 0 else 'not FULL'}")
+        self.poutput(f"Data in FIFO: {self.read_reg(43)}, {'FULL' if self.read_reg(3)&0x1 > 0 else 'EMPTY'}")
 
     #
     # enable channel trigger
@@ -622,7 +646,7 @@ class RunControlApp(cmd2.Cmd):
             ratemeters = []
             for j in range(8, 27):
                 ratemeters.append(self.read_reg(j))
-            deadtime = self.read_reg(27)
+            deadtime = round((65535 - self.read_reg(27)) / 65535 * 100)
             fifodata = self.read_reg(43)
             temp = (self.read_reg(56) >> 12)/100
             hum = (self.read_reg(56) & 0xFFF)/100
@@ -632,13 +656,23 @@ class RunControlApp(cmd2.Cmd):
             self.pwarning("Rates (Hz):")
             self.poutput(f"CH1:  {ratemeters[0]:08},  CH2: {ratemeters[1]:08},  CH3: {ratemeters[2]:08},  CH4: {ratemeters[3]:08},  CH5: {ratemeters[4]:08},  CH6: {ratemeters[5]:08},  CH7: {ratemeters[6]:08},  CH8: {ratemeters[7]:08},")
             self.poutput(f"CH9:  {ratemeters[8]:08}, CH10: {ratemeters[9]:08}, CH11: {ratemeters[10]:08}, CH12: {ratemeters[11]:08}, CH13: {ratemeters[12]:08}, CH14: {ratemeters[13]:08}, CH15: {ratemeters[14]:08}, CH16: {ratemeters[15]:08},")
-            self.poutput(f"CH17: {ratemeters[16]:08}, CH18: {ratemeters[17]:08}, CH19: {ratemeters[18]:08}  --  Deadtime: {deadtime:08}  --  FIFO: {fifodata} words ({'FULL' if self.read_reg(3)&0x1 > 0 else 'not FULL'}) \n")
+            self.poutput(f"CH17: {ratemeters[16]:08}, CH18: {ratemeters[17]:08}, CH19: {ratemeters[18]:08}  --  Deadtime: {deadtime}%  --  FIFO: {fifodata} words ({'FULL' if self.read_reg(3)&0x1 > 0 else 'not FULL'}) \n")
             self.pwarning("Tr32 status:")
             self.print_trreg()
             self.pwarning("Clock status:")
             self.print_clockreg()
             self.poutput("-------------------------------------------------------------------------------------------------------------------------------")
             time.sleep(1)
+
+    #
+    # version
+    #
+    @with_category("Monitoring commands")
+    def do_version(self, _) -> None:
+        """Check firmware version"""
+        version = self.read_reg(62)
+        sha = self.read_reg(63)
+        self.poutput(f"Firmware version: {version}\nCommit SHA: {sha:08x}")
 
     #
     # default

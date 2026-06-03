@@ -17,6 +17,7 @@ from typing import (
     List,
 )
 from hvmodbus import HVModbus
+from hvrpc import RPCClient
 
 def alarmString(alarmCode):
     msg = ' '
@@ -55,7 +56,7 @@ def printHeader():
     print(st.generate_data_row(['','','[V]','[V]','[uA]','[°C]','[V/s]/[V/s]','[V]/[uA]/[°C]/[s]','[mV]','']))
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--mode', default='rtu', const='rtu', nargs='?', choices=['rtu', 'tcp'], help='set modbus interface (default: %(default)s)') 
+parser.add_argument('--mode', default='rpc', const='rpc', nargs='?', choices=['rtu', 'tcp', 'rpc'], help='set modbus interface (default: %(default)s)') 
 parser.add_argument('--host', action='store', type=str, help='mbusd hostname (default: localhost)', default='localhost')
 parser.add_argument('--port', action='store', type=str, help='serial port device (default: /dev/ttyPS1)', default='/dev/ttyPS1')
 parser.add_argument('--freq', action='store', type=int, help='monitoring frequency (default: 1 second)', default=1)
@@ -74,14 +75,19 @@ except:
     raise ValueError('E: failed to parse --modules - should be comma-separated list of integers')
 
 hvList = []
-for addr in hvModList:
+hv = None
+if args.mode != 'rpc':
     hv = HVModbus(args)
+else:
+    client = RPCClient("http://localhost:8000/rpc")
+    hv = client.HvCore
+for addr in hvModList:
     res = hv.open(addr)
     if res != True:
         print(f'E: failed to open module {addr}')
         sys.exit(-1)
     else:
-        hvList.append(copy.copy(hv))
+        #hvList.append(copy.copy(hv))
         print(f'I: module {addr} ok')
 
 if args.filename:
@@ -107,7 +113,7 @@ except Exception as e:
 
 print(f'I: output filename: {fname}')
 
-fields = list(hv.readMonRegisters().keys())
+fields = list(hv.readMonRegisters(hvModList[0]).keys())
 fields.insert(0, 'timestamp')
 fields.insert(1, 'time')
 fields.insert(2, 'address')
@@ -132,16 +138,16 @@ try:
     while True:
         start = datetime.datetime.now()
         printHeader()
-        for hv in hvList:
+        for addr in hvModList:
             try:
-                mon = hv.readMonRegisters()
+                mon = hv.readMonRegisters(addr)
             except Exception as e:
-                print(f'E: address {hv.address} - {e}')
+                print(f'E: address {addr} - {e}')
                 continue
             else:
                 mon['timestamp'] = int(time.time())
                 mon['time'] = datetime.datetime.now()
-                mon['address'] = hv.address
+                mon['address'] = addr
                 mon['status'] = statusString(mon['status'])
                 mon['alarm'] = alarmString(mon['alarm'])
                 writer.writerow(mon)

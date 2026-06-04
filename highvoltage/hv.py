@@ -351,7 +351,7 @@ class HighVoltageApp(cmd2.Cmd):
     # threshold
     #
     threshold_parser = argparse.ArgumentParser()
-    threshold_parser.add_argument('value', type=int, help='value in mV (min:0 max:2500)')
+    threshold_parser.add_argument('value', type=float, help='value in mV (min:0 max:2500)')
 
     @cmd2.with_argparser(threshold_parser)
     @cmd2.with_category("High Voltage commands")

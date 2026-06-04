@@ -1,4 +1,5 @@
 import struct
+import math
 from sys import exit
 from mini_rpc import rpc_service, rpc_method
 
@@ -137,12 +138,15 @@ class HVModbus:
 
    @rpc_method
    def setThreshold(self, value, slave):
-      self.client.write_register(address=0x2D, value=value, device_id=slave)
+      self.client.write_register(address=0x2D, value=math.floor(value), device_id=slave)
+      self.client.write_register(address=0x35, value=int(value * 10) % 10, device_id=slave)
 
    @rpc_method
-   def getThreshold(self, slave) -> int:
-      rr = self.client.read_holding_registers(address=0x2D, count=1, device_id=slave)
-      return rr.registers[0]
+   def getThreshold(self, slave) -> float:
+      print("getThreshold")
+      ri = self.client.read_holding_registers(address=0x2D, count=1, device_id=slave)
+      rf = self.client.read_holding_registers(address=0x35, count=1, device_id=slave)
+      return ri.registers[0] + rf.registers[0]/10
 
    @rpc_method
    def getAlarm(self, slave) -> int:
@@ -185,18 +189,21 @@ class HVModbus:
 
    @rpc_method
    def setPMTSerialNumber(self, sn: str, slave):
-      data = list(bytes(sn.ljust(12), 'utf-8'))
-      self.client.write_registers(address=0x08, values=data, device_id=slave)
+      data = self.client.convert_to_registers(sn.ljust(12, '\0'), self.client.DATATYPE.STRING)
+      self.client.write_registers(address=0x08, values=data,
+        device_id=slave, no_response_expected=True)
 
    @rpc_method
    def setHVSerialNumber(self, sn: str, slave):
-      data = list(bytes(sn.ljust(12), 'utf-8'))
-      self.client.write_registers(address=0x0E, values=data, device_id=slave)
+      data = self.client.convert_to_registers(sn.ljust(12, '\0'), self.client.DATATYPE.STRING)
+      self.client.write_registers(address=0x0E, values=data,
+        device_id=slave, no_response_expected=True)
 
    @rpc_method
    def setFEBSerialNumber(self, sn: str, slave):
-      data = list(bytes(sn.ljust(12), 'utf-8'))
-      self.client.write_registers(address=0x14, values=data, device_id=slave)
+      data = self.client.convert_to_registers(sn.ljust(12, '\0'), self.client.DATATYPE.STRING)
+      self.client.write_registers(address=0x14, values=data,
+        device_id=slave, no_response_expected=True)
 
    @rpc_method
    def setModbusAddress(self, addr):
@@ -205,7 +212,7 @@ class HVModbus:
    @rpc_method
    def readMonRegisters(self, slave):
       monData = {}
-      rr = self.client.read_holding_registers(address=0, count=48, device_id=slave)
+      rr = self.client.read_holding_registers(address=0, count=54, device_id=slave)
 
       if rr.isError():
          return None
@@ -221,7 +228,8 @@ class HVModbus:
       monData['limitI'] = rr.registers[0x0025]
       monData['limitT'] = rr.registers[0x002F]
       monData['limitTRIP'] = rr.registers[0x0022]
-      monData['threshold'] = rr.registers[0x002D]
+      threshold = rr.registers[0x002D] + (rr.registers[0x0035] / 10)
+      monData['threshold'] = rr.registers[0x002D] + rr.registers[0x0035]/10
       monData['alarm'] = rr.registers[0x002E]
       
       return monData
@@ -258,16 +266,16 @@ class HVModbus:
       slope = int(slope * 10000)
       lsb = (slope & 0xFFFF)
       msb = (slope >> 16) & 0xFFFF
-      self.client.write_registers(address=0x30, values=[lsb, msb], device_id=slave)
+      self.client.write_registers(address=0x30, values=[lsb, msb], device_id=slave, no_response_expected=True)
 
    @rpc_method
    def writeCalibOffset(self, offset: float, slave):
       offset = int(offset * 10000)
       lsb = (offset & 0xFFFF)
       msb = (offset >> 16) & 0xFFFF
-      self.client.write_registers(address=0x32, values=[lsb, msb], device_id=slave)
+      self.client.write_registers(address=0x32, values=[lsb, msb], device_id=slave, no_response_expected=True)
 
    @rpc_method
    def writeCalibDiscr(self, discr: float, slave):
       discr = int(discr * 1.6890722)
-      self.client.write_register(address=0x34, value=discr, device_id=slave)
+      self.client.write_register(address=0x34, value=discr, device_id=slave, no_response_expected=True)

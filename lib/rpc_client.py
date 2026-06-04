@@ -119,8 +119,19 @@ class HvCore:
     def writeCalibSlope(self, slope, slave):
         return self._client._call('hv.core.writeCalibSlope', {"slope": slope, "slave": slave})
 
+class FpgaCore:
+    def __init__(self, client):
+        self._client = client
+
+    def readRegister(self, address):
+        return self._client._call('fpga.core.readRegister', {"address": address})
+
+    def writeRegister(self, address, value):
+        return self._client._call('fpga.core.writeRegister', {"address": address, "value": value})
+
 class RPCClient(BaseClient):
     def __init__(self, url):
         super().__init__(url)
 
         self.HvCore = HvCore(self)
+        self.FpgaCore = FpgaCore(self)

@@ -15,7 +15,6 @@ class HVModbus:
       self.devset = [None] * 21     # 1...20 for new boards default address (20)
       self.dev = None
       self.client = None
-      self.address = None
       self.param = param
 
       if self.param.mode == 'tcp':

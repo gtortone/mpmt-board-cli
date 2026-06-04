@@ -15,7 +15,7 @@ from cmd2.table_creator import (
 from typing import (
     List,
 )
-from hvrpc import RPCClient
+from lib.rpc_client import RPCClient
 
 HV_PASS = 'hv4all'
 

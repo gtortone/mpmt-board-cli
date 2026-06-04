@@ -17,7 +17,7 @@ from typing import (
     List,
 )
 from hvmodbus import HVModbus
-from hvrpc import RPCClient
+from lib.rpc_client import RPCClient
 
 def alarmString(alarmCode):
     msg = ' '

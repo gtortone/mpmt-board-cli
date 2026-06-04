@@ -3,7 +3,7 @@
 import smbus2
 import time
 import sys
-from byteutils import *
+from sensors.byteutils import *
 
 class BME280:
 

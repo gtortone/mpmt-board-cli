@@ -129,9 +129,17 @@ class FpgaCore:
     def writeRegister(self, address, value):
         return self._client._call('fpga.core.writeRegister', {"address": address, "value": value})
 
+class HkCore:
+    def __init__(self, client):
+        self._client = client
+
+    def read(self):
+        return self._client._call('hk.core.read', {})
+
 class RPCClient(BaseClient):
     def __init__(self, url):
         super().__init__(url)
 
         self.HvCore = HvCore(self)
         self.FpgaCore = FpgaCore(self)
+        self.HkCore = HkCore(self)

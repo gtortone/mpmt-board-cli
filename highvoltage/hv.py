@@ -45,7 +45,7 @@ class HighVoltageApp(cmd2.Cmd):
             self.client = RPCClient("http://localhost:8000/rpc")
             self.hv = self.client.HvCore
         else:
-            self.hv = HVModbus(param)
+            self.hv = HVModbus({"mode": param.mode, "host": param.host, "port": param.port})
 
     columns: List[Column] = list()
     columns.append(Column("", width=2))
@@ -160,8 +160,12 @@ class HighVoltageApp(cmd2.Cmd):
         self.poutput(cmd2.ansi.style(self.st.generate_data_row(['','','[V]','[V]','[uA]','[°C]','[V/s]/[V/s]','[V]/[uA]/[°C]/[s]','[mV]','']), fg=cmd2.ansi.Fg.LIGHT_BLUE))
 
     def printMonitorRow(self):
-        monData = self.hv.readMonRegisters(self.address)
-        self.poutput(self.st.generate_data_row([self.statusIcon(monData['status']), self.statusString(monData['status']), monData['Vset'], f'{monData["V"]:.3f}', f'{monData["I"]:.3f}', monData['T'], f'{monData["rateUP"]}/{monData["rateDN"]}', f'{monData["limitV"]}/{monData["limitI"]}/{monData["limitT"]}/{monData["limitTRIP"]}', monData['threshold'], self.alarmString(monData['alarm'])]))
+        try:
+            monData = self.hv.readMonRegisters(self.address)
+        except Exception as e:
+            self.select_address(self.address)
+        else:            
+            self.poutput(self.st.generate_data_row([self.statusIcon(monData['status']), self.statusString(monData['status']), monData['Vset'], f'{monData["V"]:.3f}', f'{monData["I"]:.3f}', monData['T'], f'{monData["rateUP"]}/{monData["rateDN"]}', f'{monData["limitV"]}/{monData["limitI"]}/{monData["limitT"]}/{monData["limitTRIP"]}', monData['threshold'], self.alarmString(monData['alarm'])]))
 
     #
     # select
@@ -188,10 +192,18 @@ class HighVoltageApp(cmd2.Cmd):
     rampdown_parser.add_argument('value', type=int, help='ramp down voltage rate [V/s] (min:1 max:25)')
 
     def rate_rampup(self, args):
-        if self.checkRange(args.value, 1, 25): self.hv.setRateRampup(args.value, self.address)
+        if self.checkRange(args.value, 1, 25): 
+            try:
+                self.hv.setRateRampup(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     def rate_rampdown(self, args):
-        if self.checkRange(args.value, 1, 25): self.hv.setRateRampdown(args.value, self.address)
+        if self.checkRange(args.value, 1, 25): 
+            try:
+                self.hv.setRateRampdown(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     rampup_parser.set_defaults(func=rate_rampup)
     rampdown_parser.set_defaults(func=rate_rampdown)
@@ -228,13 +240,25 @@ class HighVoltageApp(cmd2.Cmd):
         if self.checkRange(args.value, 1, 10): self.hv.setLimitCurrent(args.value, self.address)
 
     def limit_voltage(self, args):
-        if self.checkRange(args.value, 1, 20): self.hv.setLimitVoltage(args.value, self.address)
+        if self.checkRange(args.value, 1, 20): 
+            try:
+                self.hv.setLimitVoltage(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     def limit_temperature(self, args):
-        if self.checkRange(args.value, 20, 70): self.hv.setLimitTemperature(args.value, self.address)
+        if self.checkRange(args.value, 20, 70): 
+            try:
+                self.hv.setLimitTemperature(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     def limit_triptime(self, args):
-        if self.checkRange(args.value, 1, 1000): self.hv.setLimitTriptime(args.value, self.address)
+        if self.checkRange(args.value, 1, 1000): 
+            try:
+                self.hv.setLimitTriptime(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address) 
 
     current_parser.set_defaults(func=limit_current)
     voltage_parser.set_defaults(func=limit_voltage)
@@ -263,7 +287,11 @@ class HighVoltageApp(cmd2.Cmd):
         """Set voltage"""
         if self.checkConnection() is False:
             return
-        if self.checkRange(args.value, 25, 1500): self.hv.setVoltageSet(args.value, self.address)
+        if self.checkRange(args.value, 25, 1500): 
+            try:
+                self.hv.setVoltageSet(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     #
     # on
@@ -273,7 +301,10 @@ class HighVoltageApp(cmd2.Cmd):
         """Turn on HV"""
         if self.checkConnection() is False:
             return
-        self.hv.powerOn(self.address)
+        try:
+            self.hv.powerOn(self.address)
+        except Exception as e:
+            self.select_address(self.address)
 
     #
     # off
@@ -283,7 +314,10 @@ class HighVoltageApp(cmd2.Cmd):
         """Turn off HV"""
         if self.checkConnection() is False:
             return
-        self.hv.powerOff(self.address)
+        try:
+            self.hv.powerOff(self.address)
+        except Exception as e:
+            self.select_address(self.address)
 
     #
     # reset
@@ -293,7 +327,10 @@ class HighVoltageApp(cmd2.Cmd):
         """Reset alarms"""
         if self.checkConnection() is False:
             return
-        self.hv.reset(self.address)
+        try:
+            self.hv.reset(self.address)
+        except Exception as e:
+            self.select_address(self.address)
 
     #
     # info
@@ -303,17 +340,22 @@ class HighVoltageApp(cmd2.Cmd):
         """Print board info"""
         if self.checkConnection() is False:
             return
-        info = self.hv.getInfo(self.address)
-        (m,q,t) = self.hv.readCalibRegisters(self.address)
-        self.poutput(f'{"FW ver": <25}: {info[0]}')
-        self.poutput(f'{"PMT s/n": <25}: {info[1]}')
-        self.poutput(f'{"HV s/n": <25}: {info[2]}')
-        self.poutput(f'{"FEB s/n": <25}: {info[3]}')
-        self.poutput(f'{"Device ID s/n": <25}: {info[4]}')
-        self.poutput(f'{"Vref": <25}: {self.hv.getVref(self.address)} mV')
-        self.poutput(f'{"Calibration slope": <25}: {m}')
-        self.poutput(f'{"Calibration offset": <25}: {q}')
-        self.poutput(f'{"Calibration discrim.": <25}: {int(t)} mV')
+        try:
+            info = self.hv.getInfo(self.address)
+            (m,q,t) = self.hv.readCalibRegisters(self.address)
+            vref = self.hv.getVref(self.address)
+        except Exception as e:
+            self.select_address(self.address)
+        else:
+            self.poutput(f'{"FW ver": <25}: {info[0]}')
+            self.poutput(f'{"PMT s/n": <25}: {info[1]}')
+            self.poutput(f'{"HV s/n": <25}: {info[2]}')
+            self.poutput(f'{"FEB s/n": <25}: {info[3]}')
+            self.poutput(f'{"Device ID s/n": <25}: {info[4]}')
+            self.poutput(f'{"Vref": <25}: {vref} mV')
+            self.poutput(f'{"Calibration slope": <25}: {m}')
+            self.poutput(f'{"Calibration offset": <25}: {q}')
+            self.poutput(f'{"Calibration discrim.": <25}: {int(t)} mV')
 
     #
     # mon
@@ -348,6 +390,13 @@ class HighVoltageApp(cmd2.Cmd):
                 self.perror(f'{addr}')
 
     #
+    # channels 
+    #
+    @cmd2.with_category("High Voltage commands")
+    def do_channels(self, _) -> None:
+        print(self.hv.getChannels())
+
+    #
     # threshold
     #
     threshold_parser = argparse.ArgumentParser()
@@ -360,7 +409,11 @@ class HighVoltageApp(cmd2.Cmd):
         if self.checkConnection() is False:
             return
         if self.checkPassword(getpass.getpass()):
-            if self.checkRange(args.value, 0, 2500): self.hv.setThreshold(args.value, self.address)
+            if self.checkRange(args.value, 0, 2500): 
+                try:
+                    self.hv.setThreshold(args.value, self.address)
+                except Exception as e:
+                    self.select_address(self.address)
         else:
             self.perror(f'password not correct')
     #
@@ -381,17 +434,29 @@ class HighVoltageApp(cmd2.Cmd):
     def serial_pmt(self, args):
         if self.checkConnection() is False:
             return
-        if self.checkLength(args.sn, 12): self.hv.setPMTSerialNumber(args.sn, self.address)
+        if self.checkLength(args.sn, 12): 
+            try:
+                self.hv.setPMTSerialNumber(args.sn, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     def serial_hv(self, args):
         if self.checkConnection() is False:
             return
-        if self.checkLength(args.sn, 12): self.hv.setHVSerialNumber(args.sn, self.address)
+        if self.checkLength(args.sn, 12): 
+            try:
+                self.hv.setHVSerialNumber(args.sn, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     def serial_feb(self, args):
         if self.checkConnection() is False:
             return
-        if self.checkLength(args.sn, 12): self.hv.setFEBSerialNumber(args.sn, self.address)
+        if self.checkLength(args.sn, 12): 
+            try:
+                self.hv.setFEBSerialNumber(args.sn, self.address)
+            except Exception as e:
+                self.select_address(self.address)
 
     pmt_parser.set_defaults(func=serial_pmt)
     hv_parser.set_defaults(func=serial_hv)
@@ -424,9 +489,13 @@ class HighVoltageApp(cmd2.Cmd):
             return
         if self.checkPassword(getpass.getpass()):
             if self.checkRange(args.value, 1, 20):
-                self.hv.setModbusAddress(args.value, self.address)
-                time.sleep(0.5)
-                self.select_address(args.value)
+                try:
+                    self.hv.setModbusAddress(args.value, self.address)
+                except Exception as e:
+                    self.select_address(self.address)
+                else:
+                    time.sleep(0.5)
+                    self.select_address(args.value)
             else:
                 return
         else:
@@ -445,7 +514,10 @@ class HighVoltageApp(cmd2.Cmd):
         if self.checkConnection() is False:
             return
         if self.checkPassword(getpass.getpass()):
-            self.hv.writeCalibSlope(args.value, self.address)
+            try:
+                self.hv.writeCalibSlope(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
         else:
             self.perror(f'password not correct')
 
@@ -462,7 +534,10 @@ class HighVoltageApp(cmd2.Cmd):
         if self.checkConnection() is False:
             return
         if self.checkPassword(getpass.getpass()):
-            self.hv.writeCalibOffset(args.value, self.address)
+            try:
+                self.hv.writeCalibOffset(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
         else:
             self.perror(f'password not correct')
 
@@ -479,7 +554,10 @@ class HighVoltageApp(cmd2.Cmd):
         if self.checkConnection() is False:
             return
         if self.checkPassword(getpass.getpass()):
-            self.hv.writeCalibDiscr(args.value, self.address)
+            try:
+                self.hv.writeCalibDiscr(args.value, self.address)
+            except Exception as e:
+                self.select_address(self.address)
         else:
             self.perror(f'password not correct')
 

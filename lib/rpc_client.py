@@ -26,6 +26,9 @@ class HvCore:
     def getAlarm(self, slave):
         return self._client._call('hv.core.getAlarm', {"slave": slave})
 
+    def getChannels(self):
+        return self._client._call('hv.core.getChannels', {})
+
     def getCurrent(self, slave):
         return self._client._call('hv.core.getCurrent', {"slave": slave})
 
@@ -136,6 +139,16 @@ class HkCore:
     def read(self):
         return self._client._call('hk.core.read', {})
 
+class HvComposite:
+    def __init__(self, client):
+        self._client = client
+
+    def getChannels(self):
+        return self._client._call('hv.composite.getChannels', {})
+
+    def getStatus(self):
+        return self._client._call('hv.composite.getStatus', {})
+
 class RPCClient(BaseClient):
     def __init__(self, url):
         super().__init__(url)
@@ -143,3 +156,4 @@ class RPCClient(BaseClient):
         self.HvCore = HvCore(self)
         self.FpgaCore = FpgaCore(self)
         self.HkCore = HkCore(self)
+        self.HvComposite = HvComposite(self)

@@ -2,12 +2,7 @@ import struct
 import math
 from sys import exit
 from mini_rpc import rpc_service, rpc_method
-
-import pymodbus.client as ModbusClient
-from pymodbus import (
-    FramerType,
-    ModbusException,
-)
+from feb import ModbusManager
 
 @rpc_service()
 class HVModbus:
@@ -17,37 +12,15 @@ class HVModbus:
       self.client = None
       self.param = param
 
-      if self.param.mode == 'tcp':
-         self.client = ModbusClient.ModbusTcpClient(self.param.host, port=502, framer=FramerType.SOCKET)
-         if not self.client.connect():
-            print(f'E: host not reachable or mbusd not running ({self.param.host})')
-            exit(1) 
-      elif self.param.mode == 'rtu':
-         self.client = ModbusClient.ModbusSerialClient(
-            self.param.port, 
-            framer=FramerType.RTU, 
-            baudrate=115200,
-            bytesize=8,
-            parity="N",
-            stopbits=1,
-            timeout=0.1
-         )
-         if not self.client.connect():
-            print(f'E: port not available ({self.param.port})')
-            exit(1) 
-
+      self.client = ModbusManager(param) 
+      
    @rpc_method
    def open(self, addr) -> int:
-      try:
-         rr = self.client.read_holding_registers(address=0, count=1, slave=addr)
-      except ModbusException as e:
-         #print(e)
-         return False
+      return self.client.open(addr)
 
-      if rr.isError():
-         return False
-
-      return True
+   @rpc_method
+   def getChannels(self) -> list:
+      return self.client.getChannels()
       
    @rpc_method
    def getStatus(self, slave) -> int:
@@ -90,15 +63,6 @@ class HVModbus:
       rr = self.client.read_holding_registers(address=0x23, count=2, slave=slave)
       return rr.registers[1]   
 
-   #def getRate(self, fmt=str, slave) -> str:
-   #   rr = self.client.read_holding_registers(address=0x23, count=2, slave=slave)
-   #   rup = rr.registers[0]
-   #   rdn = rr.registers[1]
-   #   if fmt == str:
-   #      return f'{rup}/{rdn}' 
-   #   else:
-   #      return rup, rdn
-
    @rpc_method
    def setRateRampup(self, value, slave):
       self.client.write_register(address=0x23, value=value, slave=slave)
@@ -106,18 +70,6 @@ class HVModbus:
    @rpc_method
    def setRateRampdown(self, value, slave):
       self.client.write_register(address=0x24, value=value, slave=slave)
-
-   #def getLimit(self, fmt=str, slave) -> float:
-   #   rr = self.client.read_holding_registers(address=0, count=48, slave=slave)
-   #   lv = rr.registers[0x27]
-   #   li = rr.registers[0x25]
-   #   lt = rr.registers[0x2F]
-   #   ltt = rr.registers[0x22]
-
-   #   if fmt == str:
-   #      return f'{lv}/{li}/{lt}/{ltt}'
-   #   else:
-   #      return lv, li, lt, ltt
 
    @rpc_method
    def setLimitVoltage(self, value, slave):
@@ -142,7 +94,6 @@ class HVModbus:
 
    @rpc_method
    def getThreshold(self, slave) -> float:
-      print("getThreshold")
       ri = self.client.read_holding_registers(address=0x2D, count=1, slave=slave)
       rf = self.client.read_holding_registers(address=0x35, count=1, slave=slave)
       return ri.registers[0] + rf.registers[0]/10

@@ -1,0 +1,53 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+abstract class DeviceChannel {
+    # modbus
+    # unit_id : int
+    # channel_id : int
+}
+
+class HVChannel {
+    + set_voltage(voltage: float)
+}
+
+class LEDChannel {
+    + set_state(state: bool)
+}
+
+class FEBChannel {
+    - channel_id : int
+    - _device : DeviceChannel
+    + attach(device: DeviceChannel)
+    + device : DeviceChannel
+    + type
+    + is_configured() : bool
+}
+
+class FEBManager {
+    - modbus : ModbusManager
+    - _channels : List<FEBChannel>
+    + channel(i: int) : FEBChannel
+    + configure_hv(channel_id:int, unit_id:int)
+    + configure_led(channel_id:int, unit_id:int)
+}
+
+class ModbusManager {
+    - port : str
+    - connected : bool
+    + connect()
+    + write_register(unit:int, addr:int, value:int)
+}
+
+DeviceChannel <|-- HVChannel
+DeviceChannel <|-- LEDChannel
+
+FEBManager *-- "1" ModbusManager
+FEBManager *-- "19" FEBChannel
+
+FEBChannel o-- "0..1" DeviceChannel
+
+DeviceChannel --> ModbusManager : uses
+
+@enduml

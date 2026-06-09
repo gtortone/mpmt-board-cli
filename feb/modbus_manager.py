@@ -6,6 +6,23 @@ from pymodbus import (
     ModbusException,
 )
 from multiprocessing import Lock
+from dataclasses import dataclass, field
+from typing import Literal, Optional
+
+@dataclass
+class ModbusConfig:
+    mode: Literal["tcp", "rtu"]
+    host: Optional[str] = None
+    port: Optional[str] = None
+    max_slave: int = 21
+
+    def __post_init__(self):
+        if self.mode == "tcp" and not self.host:
+            raise ValueError("'host' mandatory for tcp mode")
+        if self.mode == "rtu" and not self.port:
+            raise ValueError("'port' mandatory for rtu mode")
+        if self.max_slave < 1:
+            raise ValueError("'max_slave' must be >= 1")
 
 class ModbusManager:
 
@@ -17,7 +34,7 @@ class ModbusManager:
             raise Exception("Class ModbusManager - no instance")
         return ModbusManager.__instance
 
-    def __init__(self, param):
+    def __init__(self, param: ModbusConfig):
         if ModbusManager.__instance != None:
             raise Exception("Class ModbusManager - use existing instance")
         else:
@@ -28,18 +45,18 @@ class ModbusManager:
         self.connected = False
         self.mutex = Lock() 
         self.channels = []
-        self.max_slave = self.param.get("max_slave", 21)
+        self.max_slave = self.param.max_slave
 
         logging.getLogger("pymodbus.logging").disabled = True
 
         if not self.connected:
-            if self.param["mode"] == 'tcp':
-                self.client = ModbusClient.ModbusTcpClient(self.param["host"], port=502, framer=FramerType.SOCKET)
+            if self.param.mode == 'tcp':
+                self.client = ModbusClient.ModbusTcpClient(self.param.host, port=502, framer=FramerType.SOCKET)
                 if not self.client.connect():
-                    raise RuntimeError(f'E: host not reachable or mbusd not running ({self.param["host"]})')
-            elif self.param["mode"] == 'rtu':
+                    raise RuntimeError(f'E: host not reachable or mbusd not running ({self.param.host})')
+            elif self.param.mode == 'rtu':
                 self.client = ModbusClient.ModbusSerialClient(
-                    self.param["port"],
+                    self.param.port,
                     framer=FramerType.RTU,
                     baudrate=115200,
                     bytesize=8,
@@ -48,7 +65,7 @@ class ModbusManager:
                     timeout=0.1
                 )
                 if not self.client.connect():
-                    raise RuntimeError(f'E: port not available ({self.param["port"]})')
+                    raise RuntimeError(f'E: port not available ({self.param.port})')
 
                 self.DATATYPE = self.client.DATATYPE
                 self.connected = True

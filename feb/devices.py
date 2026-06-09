@@ -11,11 +11,11 @@ class HVChannel(DeviceChannel):
     def set_voltage(self, voltage: float):
         addr = 100 + self.channel_id
         value = int(voltage * 10)
-        self.modbus.write_register(self.unit_id, addr, value)
+        #self.modbus.write_register(self.unit_id, addr, value)
 
 
 class LEDChannel(DeviceChannel):
     def set_state(self, state: bool):
         addr = 200 + self.channel_id
         value = 1 if state else 0
-        self.modbus.write_register(self.unit_id, addr, value)
+        #self.modbus.write_register(self.unit_id, addr, value)

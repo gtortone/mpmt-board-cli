@@ -18,6 +18,7 @@ from typing import (
 )
 from hvmodbus import HVModbus
 from lib.rpc_client import RPCClient
+from feb import ModbusConfig
 
 def alarmString(alarmCode):
     msg = ' '
@@ -77,7 +78,8 @@ except:
 hvList = []
 hv = None
 if args.mode != 'rpc':
-    hv = HVModbus(args)
+    modbus_cfg = ModbusConfig(mode=args.mode, host=args.host, port=args.port)
+    hv = HVModbus(modbus_cfg)
 else:
     client = RPCClient("http://localhost:8000/rpc")
     hv = client.HvCore

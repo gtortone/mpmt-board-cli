@@ -1,16 +1,16 @@
 
 from devices import HVChannel, LEDChannel
 from feb_channel import FEBChannel
-from modbus_manager import ModbusManager
+from modbus_manager import ModbusManager, ModbusConfig
 
 class FEBManager:
-    def __init__(self, port: str, n_channels: int = 19):
-        self.modbus = ModbusManager(port)
-        self.modbus.connect()
+    def __init__(self, cfg: ModbusConfig):
+        self.modbus = ModbusManager(cfg)
+        #self.modbus.connect()
 
         self._channels = [
             FEBChannel(i)
-            for i in range(n_channels)
+            for i in range(cfg.max_slave)
         ]
 
     def channel(self, i: int) -> FEBChannel: 

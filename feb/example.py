@@ -1,8 +1,9 @@
 
 from devices import HVChannel, LEDChannel
 from feb_manager import FEBManager
+from modbus_manager import ModbusConfig
 
-manager = FEBManager("/dev/ttyUSB0")
+manager = FEBManager(ModbusConfig(mode="rtu", port="/dev/ttyPS1"))
 
 manager.configure_hv(channel_id=0, unit_id=1)
 manager.configure_led(channel_id=1, unit_id=2)

@@ -16,6 +16,7 @@ from typing import (
     List,
 )
 from lib.rpc_client import RPCClient
+from feb import ModbusConfig
 
 HV_PASS = 'hv4all'
 
@@ -45,7 +46,8 @@ class HighVoltageApp(cmd2.Cmd):
             self.client = RPCClient("http://localhost:8000/rpc")
             self.hv = self.client.HvCore
         else:
-            self.hv = HVModbus({"mode": param.mode, "host": param.host, "port": param.port})
+            modbus_cfg = ModbusConfig(mode=param.mode, host=param.host, port=param.port)
+            self.hv = HVModbus(modbus_cfg)
 
     columns: List[Column] = list()
     columns.append(Column("", width=2))

@@ -2,13 +2,11 @@ import struct
 import math
 from sys import exit
 from mini_rpc import rpc_service, rpc_method
-from feb import ModbusManager
+from feb import ModbusManager, ModbusConfig
 
 @rpc_service()
 class HVModbus:
-   def __init__(self, param):
-      self.devset = [None] * 21     # 1...20 for new boards default address (20)
-      self.dev = None
+   def __init__(self, param: ModbusConfig):
       self.client = None
       self.param = param
 

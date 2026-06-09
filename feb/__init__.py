@@ -1,1 +1,1 @@
-from .modbus_manager import ModbusManager
+from .modbus_manager import ModbusManager, ModbusConfig

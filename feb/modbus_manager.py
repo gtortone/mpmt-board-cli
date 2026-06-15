@@ -1,10 +1,6 @@
-
 import logging
 import pymodbus.client as ModbusClient
-from pymodbus import (
-    FramerType,
-    ModbusException,
-)
+from pymodbus import FramerType, ModbusException
 from multiprocessing import Lock
 from pydantic.dataclasses import dataclass
 from typing import Literal, Optional
@@ -14,15 +10,12 @@ class ModbusConfig:
     mode: Literal["tcp", "rtu"]
     host: Optional[str] = None
     port: Optional[str] = None
-    max_slave: int = 21
 
     def __post_init__(self):
         if self.mode == "tcp" and not self.host:
             raise ValueError("'host' mandatory for tcp mode")
         if self.mode == "rtu" and not self.port:
             raise ValueError("'port' mandatory for rtu mode")
-        if self.max_slave < 1:
-            raise ValueError("'max_slave' must be >= 1")
 
 class ModbusManager:
 
@@ -44,8 +37,6 @@ class ModbusManager:
         self.client = None
         self.connected = False
         self.mutex = Lock() 
-        self.channels = []
-        self.max_slave = self.param.max_slave
 
         logging.getLogger("pymodbus.logging").disabled = True
 
@@ -69,15 +60,11 @@ class ModbusManager:
 
                 self.DATATYPE = self.client.DATATYPE
                 self.connected = True
-                self.probe()
+                #self.probe()
 
     def close(self):
         if self.connected:
             self.client.close()
-
-    def probe(self):
-        for addr in range(1, self.max_slave):
-            self.open(addr)
 
     def check_connect(func):
         def wrapper(self, *args, **kwargs):
@@ -101,20 +88,12 @@ class ModbusManager:
         try:
             rr = self.client.read_holding_registers(address=0, count=1, slave=slave)
         except Exception as e:
-            if slave in self.channels:
-                self.channels.remove(slave)
             return False
 
         if (rr is None) or (rr.isError()):
-            self.channels.remove(slave)
             return False
 
-        if slave not in self.channels:
-            self.channels.append(slave)
         return True
-
-    def getChannels(self) -> list:
-        return sorted(self.channels)
 
     @check_connect
     @critical_section
@@ -123,12 +102,7 @@ class ModbusManager:
         try:
             rr = self.client.read_holding_registers(address=address, count=count, slave=slave)
         except Exception as e:
-            if slave in self.channels:
-                self.channels.remove(slave)
             raise(e)
-        else:
-            if slave not in self.channels:
-                self.channels.append(slave)
         return rr
 
     @check_connect
@@ -138,12 +112,7 @@ class ModbusManager:
         try:
             rr = self.client.write_register(address=address, value=value, slave=slave)
         except Exception as e:
-            if slave in self.channels:
-                self.channels.remove(slave)
             raise(e)
-        else:
-            if slave not in self.channels:
-                self.channels.append(slave)
         return rr
 
     @check_connect
@@ -154,12 +123,7 @@ class ModbusManager:
             rr = self.client.write_registers(
                 address=address, values=values, slave=slave, no_response_expected=no_response_expected)
         except Exception as e:
-            if slave in self.channels:
-                self.channels.remove(slave)
             raise(e)
-        else:
-            if slave not in self.channels:
-                self.channels.append(slave)
         return rr
         
     @check_connect
@@ -169,12 +133,7 @@ class ModbusManager:
         try:
             rr = self.client.write_coil(address=address, value=value, slave=slave)
         except Exception as e:
-            if slave in self.channels:
-                self.channels.remove(slave)
             raise(e)
-        else:
-            if slave not in self.channels:
-                self.channels.append(slave)
         return rr
     
     def convert_from_registers(self, registers: list, data_type):

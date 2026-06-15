@@ -6,11 +6,17 @@ from feb import ModbusManager, ModbusConfig
 
 @rpc_service()
 class HVModbus:
-   def __init__(self, param: ModbusConfig):
+   def __init__(self, param: ModbusConfig | ModbusManager):
       self.client = None
-      self.param = param
+      self.param = None
 
-      self.client = ModbusManager(param) 
+      if isinstance(param, ModbusManager):
+        self.client = param
+      elif isinstance(param, ModbusConfig):
+        self.param = param
+        self.client = ModbusManager(param) 
+      else:
+        raise TypeError(f"Expected ModbusConfig or ModbusManager, got {type(param).__name__}")
       
    @rpc_method
    def open(self, addr) -> int:

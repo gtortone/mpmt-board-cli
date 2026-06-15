@@ -6,7 +6,7 @@ from pymodbus import (
     ModbusException,
 )
 from multiprocessing import Lock
-from dataclasses import dataclass, field
+from pydantic.dataclasses import dataclass
 from typing import Literal, Optional
 
 @dataclass

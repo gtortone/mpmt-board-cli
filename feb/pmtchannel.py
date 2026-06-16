@@ -31,7 +31,9 @@ class PMTChannel(DeviceChannel):
 
     def __init__(self, modbus, channel: int, address: int):
         super().__init__(modbus, channel, address)
-        # probe device
+        self.probe()
+
+    def probe(self):
         try:
             self.getStatus()
         except Exception as e:

@@ -5,14 +5,16 @@ class LEDChannel(DeviceChannel):
 
     def __init__(self, modbus, channel: int, address: int):
         super().__init__(modbus, channel, address)
-        # probe device
+        self.probe()
+
+    def probe(self):
         try:
             self.getInfo()
         except Exception as e:
             self.online = False
         else:
             self.online = True
-
+        
     @DeviceChannel.track_connection
     def getInfo(self) -> dict:
         rr = self.modbus.read_input_registers(address=30001, count=1, slave=self.address).registers

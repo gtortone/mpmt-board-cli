@@ -1,5 +1,6 @@
-
 import inspect
+import threading
+import time
 from feb.feb_channel import FEBChannel
 from feb.modbus_manager import ModbusManager, ModbusConfig
 from feb.devices import DeviceType, DeviceConfig
@@ -27,6 +28,23 @@ class FEBManager:
                 else:
                     self.configure(DeviceType.LED, ch+1, ch+21)
 
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self.probe_task)
+        self._thread.start()
+
+    def close(self):
+        if not self._stop_event.is_set():
+            self._stop_event.set()
+
+            if self._thread.is_alive():
+                self._thread.join(timeout=5)
+
+    def probe_task(self):
+        while not self._stop_event.is_set():
+            for ch in self.getChannels():
+                self.channel(ch).device.probe()
+                time.sleep(0.250) 
+
     def channel(self, i: int) -> FEBChannel: 
         if i <= 0 or i>len(self._channels)-1:
             raise IndexError(f"Invalid channel index {i}")
@@ -35,7 +53,7 @@ class FEBManager:
 
     def clear(self):
         for i in range(self.maxChannels+1):
-            FEBChannel(i).detach()
+            self.channel(i).detach()
 
     def setup(self, cfg: list[DeviceConfig]):
         self.clear()

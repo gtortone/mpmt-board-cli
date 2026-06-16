@@ -53,6 +53,10 @@ class DeviceChannel(ABC):
         self.channel = channel      # board channel address
         self.online = False         # true/false if read/write operation ok/fail
 
+    # device derived class must provide probe implementation
+    def probe(self):
+        None
+
     def __str__(self):
         return (f"Board channel: {self.channel}, MB address: {self.address}, online: {self.online}")
 

@@ -4,6 +4,7 @@ from feb.feb_channel import FEBChannel
 from feb.modbus_manager import ModbusManager, ModbusConfig
 from feb.devices import DeviceType, DeviceConfig
 from feb.pmtchannel import PMTChannel
+from feb.ledchannel import LEDChannel
 from runcontrol.fpga import FPGA
 from mini_rpc import rpc_service, rpc_method
 
@@ -12,14 +13,14 @@ class FEBManager:
     def __init__(self, cfg: ModbusConfig, maxChannels=19, config_from_fpga=True):
         self.modbus = ModbusManager(cfg)
         self.maxChannels = maxChannels
-        fpga = FPGA('/dev/uio0')
+        self.fpga = FPGA('/dev/uio0')
 
         # channels are labeled from J1 to J19 (1...19)
         self._channels = [ FEBChannel(i) for i in range(maxChannels+1) ]
 
         # register 103 bit (x) is '1' for PMT channel, '0' for LED channel
         if config_from_fpga:
-            pmtmask = fpga.readRegister(103)
+            pmtmask = self.fpga.readRegister(103)
             for ch in range(maxChannels):       # 0...18
                 if pmtmask & 1<<ch:
                     self.configure(DeviceType.PMT, ch+1, ch+1)
@@ -108,3 +109,50 @@ class FEBManager:
             except Exception as e:
                 ...
         return report
+
+    @rpc_method
+    # enable (turn-on) single channel
+    def enableChannel(self, channel: int):
+        if channel > self.maxChannels:
+            raise IndexError(f"Invalid channel index {channel}")
+        else: 
+            mask = (1<<(channel-1))
+            value = self.fpga.readRegister(1) | mask
+            self.fpga.writeRegister(1, value)
+
+    @rpc_method
+    # disable (turn-off) single channel
+    def disableChannel(self, channel: int):
+        if channel > self.maxChannels:
+            raise IndexError(f"Invalid channel index {channel}")
+        else: 
+            mask = (1<<(channel-1))
+            value = self.fpga.readRegister(1) & ~mask
+            self.fpga.writeRegister(1, value)
+    
+    @rpc_method
+    # enable (turn-on) channels using list
+    def enableChannels(self, channels: list[int]):
+        for ch in channels:
+            self.enableChannel(ch)
+
+    @rpc_method
+    # disable (turn-off) channels using list
+    def disableChannels(self, channels: list[int]):
+        for ch in channels:
+            self.disableChannel(ch)
+
+    @rpc_method
+    # enable (turn-on) channels using bitmask
+    def enableChannelsByMask(self, mask: int):
+        for ch in range (0, self.maxChannels):
+            if mask & (1<<ch):
+                self.enableChannel(ch+1)
+
+    @rpc_method
+    # disable (turn-off) channels using bitmask
+    def disableChannelsByMask(self, mask: int):
+        for ch in range (0, self.maxChannels):
+            if mask & (1<<ch):
+                self.disableChannel(ch+1)
+

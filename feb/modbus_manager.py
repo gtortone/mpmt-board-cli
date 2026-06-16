@@ -107,6 +107,16 @@ class ModbusManager:
 
     @check_connect
     @critical_section
+    def read_input_registers(self, address: int, count: int, slave: int):
+        rr = None
+        try:
+            rr = self.client.read_input_registers(address=address, count=count, slave=slave)
+        except Exception as e:
+            raise(e)
+        return rr
+
+    @check_connect
+    @critical_section
     def write_register(self, address: int, value: int, slave: int):
         rr = None
         try:

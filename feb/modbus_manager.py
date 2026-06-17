@@ -117,6 +117,26 @@ class ModbusManager:
 
     @check_connect
     @critical_section
+    def read_discrete_inputs(self, address: int, count: int, slave: int):
+        rr = None
+        try:
+            rr = self.client.read_discrete_inputs(address=address, count=count, slave=slave)
+        except Exception as e:
+            raise(e)
+        return rr
+
+    @check_connect
+    @critical_section
+    def read_coils(self, address: int, count: int, slave: int):
+        rr = None
+        try:
+            rr = self.client.read_coils(address=address, count=count, slave=slave)
+        except Exception as e:
+            raise(e)
+        return rr
+
+    @check_connect
+    @critical_section
     def write_register(self, address: int, value: int, slave: int):
         rr = None
         try:

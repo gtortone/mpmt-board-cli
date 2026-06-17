@@ -40,9 +40,11 @@ class FEBManager:
                 self._thread.join(timeout=5)
 
     def probe_task(self):
-        while not self._stop_event.is_set():
+        while True:
             for ch in self.getChannels():
                 self.channel(ch).device.probe()
+                if self._stop_event.is_set():
+                    return
                 time.sleep(0.250) 
 
     def channel(self, i: int) -> FEBChannel: 

@@ -125,7 +125,10 @@ class FEBManager:
         report = {}
         for ch in self.getOnlineChannels(dtype):
             try:
-                report[str(ch)] = self.channel(ch).device.readMonRegisters()
+                report[str(ch)] = { 
+                    "type": self.channel(ch).device.DEVICE_TYPE,
+                    **self.channel(ch).device.readMonRegisters()
+                }
             except Exception as e:
                 ...
         return report

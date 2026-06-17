@@ -151,18 +151,15 @@ class PMTChannel(DeviceChannel):
 
     @DeviceChannel.track_connection
     def powerOn(self):
-        rr = self.modbus.write_coil(address=1, value=True, slave=self.address)
-        return not rr.isError()
+        self.modbus.write_coil(address=1, value=True, slave=self.address)
 
     @DeviceChannel.track_connection
     def powerOff(self):
-        rr = self.modbus.write_coil(address=1, value=False, slave=self.address)
-        return not rr.isError()
+        self.modbus.write_coil(address=1, value=False, slave=self.address)
 
     @DeviceChannel.track_connection
     def reset(self):
-        rr = self.modbus.write_coil(address=2, value=True, slave=self.address)
-        return not rr.isError()
+        self.modbus.write_coil(address=2, value=True, slave=self.address)
 
     @DeviceChannel.track_connection
     def getInfo(self) -> dict:
@@ -208,8 +205,12 @@ class PMTChannel(DeviceChannel):
         if rr.isError():
            return {}
 
-        monData['status'] = rr.registers[0x0006]
-        monData['status_str'] = self.STATUS_MAP.get(rr.registers[0x0006], "undef")
+        monData['status'] = { 
+            "value": rr.registers[0x0006], 
+            "string": self.STATUS_MAP.get(rr.registers[0x0006], "undef")
+        }
+        #monData['status']['value'] = rr.registers[0x0006]
+        #monData['status']['string'] = self.STATUS_MAP.get(rr.registers[0x0006], "undef")
         monData['Vset'] = rr.registers[0x0026]
         monData['V'] = ((rr.registers[0x002B] << 16) + rr.registers[0x002A]) / 1000
         monData['I'] = ((rr.registers[0x0029] << 16) + rr.registers[0x0028]) / 1000
@@ -222,8 +223,12 @@ class PMTChannel(DeviceChannel):
         monData['limitTRIP'] = rr.registers[0x0022]
         threshold = rr.registers[0x002D] + (rr.registers[0x0035] / 10)
         monData['threshold'] = rr.registers[0x002D] + rr.registers[0x0035]/10
-        monData['alarm'] = rr.registers[0x002E]
-        monData['alarm_str'] = self.alarm_string(rr.registers[0x002E])
+        monData['alarm'] = {
+            "value": rr.registers[0x002E],
+            "string": self.alarm_string(rr.registers[0x002E])
+        }
+        #monData['alarm']['value'] = rr.registers[0x002E]
+        #monData['alarm']['string'] = self.alarm_string(rr.registers[0x002E])
         
         return monData
 

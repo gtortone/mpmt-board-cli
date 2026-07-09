@@ -160,10 +160,16 @@ class HVModbus:
         rr = self.client.write_coil(address=1, value=True, slave=slave)
         return not rr.isError()
 
+    def powerOnAll(self):
+        self.client.write_coil(address=1, value=True, slave=0, no_response_expected=True)
+
     def powerOff(self, slave=None):
         slave = self.address if slave is None else slave
         rr = self.client.write_coil(address=1, value=False, slave=slave)
         return not rr.isError()
+
+    def powerOffAll(self):
+        self.client.write_coil(address=1, value=False, slave=0, no_response_expected=True)
 
     def reset(self, slave=None):
         slave = self.address if slave is None else slave
@@ -216,6 +222,9 @@ class HVModbus:
     def setModbusAddress(self, addr, slave=None):
         slave = self.address if slave is None else slave
         self.client.write_register(address=0x00, value=addr, slave=slave)
+
+    def setForceModbusAddress(self, addr):
+        self.client.write_register(address=0x00, value=addr, slave=0, no_response_expected=True)
 
     def readMonRegisters(self, slave=None):
         slave = self.address if slave is None else slave

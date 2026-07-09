@@ -281,6 +281,14 @@ class HighVoltageApp(cmd2.Cmd):
         self.hv.powerOn()
 
     #
+    # onAll
+    #
+    @cmd2.with_category("High Voltage commands")
+    def do_onAll(self, _) -> None:
+        """Turn on HV of all channels"""
+        self.hv.powerOnAll()
+
+    #
     # off
     #
     @cmd2.with_category("High Voltage commands")
@@ -289,6 +297,14 @@ class HighVoltageApp(cmd2.Cmd):
         if not self.checkConnection():
             return
         self.hv.powerOff()
+
+    #
+    # off
+    #
+    @cmd2.with_category("High Voltage commands")
+    def do_offAll(self, _) -> None:
+        """Turn off HV of all channels"""
+        self.hv.powerOffAll()
 
     #
     # reset
@@ -396,7 +412,7 @@ class HighVoltageApp(cmd2.Cmd):
     @cmd2.with_argparser(serial_parser)
     @cmd2.with_category("High Voltage commands")
     def do_serial(self, args):
-        """Set serial numbers for PMT/HV/FEB"""
+        """Set serial numbers for PMT/HV"""
         if not self.checkConnection():
             return
         func = getattr(args, 'func', None)
@@ -421,6 +437,26 @@ class HighVoltageApp(cmd2.Cmd):
         if self.checkPassword(getpass.getpass()):
             if self.checkRange(args.value, 1, 20):
                 self.hv.setModbusAddress(args.value)
+                time.sleep(0.5)
+                self.select_address(args.value)
+            else:
+                return
+        else:
+            self.perror(f'password not correct')
+
+    #
+    # force address
+    #
+    faddress_parser = argparse.ArgumentParser()
+    faddress_parser.add_argument('value', type=int, help='modbus address (min:1 max:20)')
+
+    @cmd2.with_argparser(faddress_parser)
+    @cmd2.with_category("High Voltage commands")
+    def do_forceaddress(self, args: argparse.Namespace) -> None:
+        """Force change the selected board address using broacast address 0"""
+        if self.checkPassword(getpass.getpass()):
+            if self.checkRange(args.value, 1, 20):
+                self.hv.setForceModbusAddress(args.value)
                 time.sleep(0.5)
                 self.select_address(args.value)
             else:

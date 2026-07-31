@@ -185,8 +185,15 @@ class HVModbus:
         l = self.client.read_holding_registers(address=0x0E, count=6, slave=slave).registers
         hvsn = struct.pack(f'>{len(l)}h', *l).decode()
         l = self.client.read_holding_registers(address=0x04, count=2, slave=slave).registers
-        devid = (l[1] << 16) + l[0]
-        return fwver, pmtsn, hvsn, devid
+        return fwver, pmtsn, hvsn, self.unpackSN(l)
+
+    @staticmethod
+    def unpackSN(registers: list[int]) -> str:
+        uid = struct.pack("<6H", *registers)
+        lot = (uid[0:3] + uid[4:8]).decode("ascii")
+        wafer = uid[3]
+        unique = int.from_bytes(uid[8:12], "little")
+        return f"{lot}{wafer:03d}{unique:08X}"
 
     def safe_write_registers(self, address, values, slave=None):
         slave = self.address if slave is None else slave

@@ -184,7 +184,7 @@ class HVModbus:
         pmtsn = struct.pack(f'>{len(l)}h', *l).decode()
         l = self.client.read_holding_registers(address=0x0E, count=6, slave=slave).registers
         hvsn = struct.pack(f'>{len(l)}h', *l).decode()
-        l = self.client.read_holding_registers(address=0x04, count=2, slave=slave).registers
+        l = self.client.read_holding_registers(address=0x36, count=6, slave=slave).registers
         return fwver, pmtsn, hvsn, self.unpackSN(l)
 
     @staticmethod

@@ -6,6 +6,7 @@ import mmap
 REG_FW_DATE_AND_FAULTS = 61
 REG_FW_TIME = 62
 REG_FW_SHA = 63
+REG_FW_VARIANT = 103
 REG_FW_VERSION = 104
 
 class FPGADevice:
@@ -30,6 +31,7 @@ class FPGADevice:
       timeValue = self.read_register(REG_FW_TIME)
       shaValue = self.read_register(REG_FW_SHA)
       versionValue = self.read_register(REG_FW_VERSION)
+      variantValue = self.read_register(REG_FW_VARIANT)
    
       dateHex = f"{dateValue:08x}"
       timeHex = f"{timeValue:08x}"
@@ -41,10 +43,12 @@ class FPGADevice:
       minor = int(minorText, 16)
       patch = int(patchText, 16)
       version = f"v{major}.{minor}.{patch}"
+      variant = "PLAIN" if variantValue == 0x7FFFF else "LED"
    
       return {
           "version": version,
           "bitstreamDate": f"{dateHex[6:8]}-{dateHex[4:6]}-{dateHex[0:4]}",
           "bitstreamTime": f"{timeHex[0:2]}:{timeHex[2:4]}:{timeHex[4:6]}",
-          "commitSha": f"{shaValue:08x}"
+          "commitSha": f"{shaValue:08x}",
+          "variant": f"{variant}"
       }
